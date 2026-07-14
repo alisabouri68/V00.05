@@ -1,0 +1,63 @@
+/* Define Poppins font family with different weights */
+
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/PoppinsLatin-Thin.otf") format("opentype");
+  font-weight: 100;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/PoppinsLatin-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Poppins";
+  src:
+    url("../fonts/Poppins-Regular.ttf") format("truetype"),
+    url("../fonts/PoppinsLatin-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/PoppinsLatin-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Poppins";
+  src:
+    url("../fonts/Poppins-Bold.ttf") format("truetype"),
+    url("../fonts/PoppinsLatin-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/PoppinsLatin-BoldItalic.ttf") format("truetype");
+  font-weight: 700;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/PoppinsLatin-Black.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+}
+
+/* Apply the font to the whole document */
+:root {
+  font-family: "Poppins", sans-serif !important;
+}
+
+body {
+  font-family: "Poppins", sans-serif !important;
+}
