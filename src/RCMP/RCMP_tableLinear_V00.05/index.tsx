@@ -2,15 +2,16 @@
 Meta Data
 
 ID:             RCOM_tableLinear 
-Title:          Table Linear Component - Optimized v2.0
-Version:        02.00.00
-VAR:            01
+Title:          Table Linear Component - Optimized v2.1
+Version:        02.01.00
+VAR:            02
 
-last-update:    D2026.07.13
+last-update:    D2026.07.14
 owner:          apps68
 
-Description:    Highly optimized table with virtualization, 
-                sorting, filtering, column resizing, and more.
+Description:    Highly optimized table with fixed action column,
+                horizontal column navigation, dark/light mode,
+                virtualization, sorting, filtering, column resizing.
 ------------------------------------------------------------*/
 
 /**************************************
@@ -19,6 +20,8 @@ Description:    Highly optimized table with virtualization,
 import {
   AddCircle,
   ArrowDown2,
+  ArrowLeft2,
+  ArrowRight2,
   ArrowUp2,
   CloseCircle,
   DocumentDownload,
@@ -32,6 +35,8 @@ import {
   Sort,
   Trash,
   TickCircle,
+  Sun,
+  Moon,
 } from "iconsax-react";
 import React, {
   useState,
@@ -43,16 +48,12 @@ import React, {
   useId,
 } from "react";
 import { createPortal } from "react-dom";
-// For virtualization (optional - install: npm install @tanstack/react-virtual)
-// import { useVirtualizer } from '@tanstack/react-virtual'
 
 /**************************************
  * Step.02:    import dependency - widgets
  **************************************/
 import Button from "RCMP/RCMP_button_V00.05";
-/**************************************
- * Step.03:    co-actor dependencies
- **************************************/
+
 /**************************************
  * Step 04 - define properties - Static
  **************************************/
@@ -84,7 +85,6 @@ const exportToCSV = (
         .filter((c) => !c.hidden)
         .map((c) => {
           const val = row[c.key];
-          // Escape commas and quotes
           if (
             typeof val === "string" &&
             (val.includes(",") || val.includes('"'))
@@ -105,6 +105,7 @@ const exportToCSV = (
   link.click();
   URL.revokeObjectURL(link.href);
 };
+
 // ============================================
 // INTERFACES
 // ============================================
@@ -128,6 +129,7 @@ interface IGeoProps {
   position?: string;
   zIndex?: string;
 }
+
 export interface IColumn {
   key: string;
   title: string;
@@ -204,6 +206,8 @@ interface ILogicProps extends ITableEvents {
   enableExport?: boolean;
   rowKey?: string;
   summaryData?: { label: string; value: string | number }[];
+  enableDarkMode?: boolean;
+  defaultDarkMode?: boolean;
 }
 
 interface IStyleProps {
@@ -236,14 +240,14 @@ const TableSkeleton = memo(
       {Array.from({ length: rowCount }).map((_, rowIdx) => (
         <tr key={`skeleton-${rowIdx}`} className="h-10">
           <td className="px-3">
-            <div className="h-4 w-4 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-4 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
           </td>
           {columns
             .filter((c) => !c.hidden)
             .map((col, colIdx) => (
               <td key={`skel-${rowIdx}-${colIdx}`} className="px-3">
                 <div
-                  className="h-4 animate-pulse rounded bg-gray-200"
+                  className="h-4 animate-pulse rounded bg-gray-200 dark:bg-gray-700"
                   style={{
                     width: typeof col.width === "number" ? col.width : "80%",
                   }}
@@ -251,7 +255,7 @@ const TableSkeleton = memo(
               </td>
             ))}
           <td className="px-3">
-            <div className="h-4 w-8 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-8 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
           </td>
         </tr>
       ))}
@@ -268,8 +272,8 @@ const EmptyState = memo(({ text = "No data found." }: { text?: string }) => (
     <tr>
       <td colSpan={100} className="py-16 text-center">
         <div className="flex flex-col items-center gap-3">
-          <ElementEqual size={48} className="stroke-gray-300" />
-          <p className="text-sm text-gray-400 font-medium">{text}</p>
+          <ElementEqual size={48} className="stroke-gray-300 dark:stroke-gray-600" />
+          <p className="text-sm text-gray-400 dark:text-gray-500 font-medium">{text}</p>
         </div>
       </td>
     </tr>
@@ -304,9 +308,11 @@ const ColumnFilter = memo(
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={`Filter ${column.title}...`}
-          className="w-full h-7 rounded border border-gray-200 px-2 text-xs 
+          className="w-full h-7 rounded border border-gray-200 dark:border-gray-600 px-2 text-xs 
                    focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500
-                   bg-white/80 backdrop-blur-sm"
+                   bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
+                   text-gray-700 dark:text-gray-200
+                   placeholder:text-gray-400 dark:placeholder:text-gray-500"
           onClick={(e) => e.stopPropagation()}
         />
         {value && (
@@ -371,7 +377,8 @@ const InlineEditCell = memo(
           onKeyDown={handleKeyDown}
           onBlur={() => onSave(editValue)}
           className="h-7 w-full rounded border border-cyan-500 px-2 text-xs 
-                   focus:outline-none focus:ring-2 focus:ring-cyan-200"
+                   focus:outline-none focus:ring-2 focus:ring-cyan-200
+                   bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
         />
       </div>
     );
@@ -409,6 +416,8 @@ const TableLinear = memo(function TableLinear({
     enableExport = false,
     rowKey = "id",
     summaryData,
+    enableDarkMode = false,
+    defaultDarkMode = false,
     onSelect,
     onEdit,
     onDelete,
@@ -454,8 +463,13 @@ const TableLinear = memo(function TableLinear({
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
   const [startX, setStartX] = useState(0);
   const [startWidth, setStartWidth] = useState(0);
+  const [isDarkMode, setIsDarkMode] = useState(defaultDarkMode);
+  const [visibleColumnStart, setVisibleColumnStart] = useState(0);
+  const [visibleColumnCount, setVisibleColumnCount] = useState(5);
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
   const componentId = useId();
   const settingButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -463,6 +477,30 @@ const TableLinear = memo(function TableLinear({
     top: number;
     left: number;
   } | null>(null);
+
+  // Sync horizontal scroll between header and body
+  useEffect(() => {
+    const headerEl = headerScrollRef.current;
+    const bodyEl = bodyScrollRef.current;
+
+    if (!headerEl || !bodyEl) return;
+
+    const handleHeaderScroll = () => {
+      bodyEl.scrollLeft = headerEl.scrollLeft;
+    };
+
+    const handleBodyScroll = () => {
+      headerEl.scrollLeft = bodyEl.scrollLeft;
+    };
+
+    headerEl.addEventListener("scroll", handleHeaderScroll);
+    bodyEl.addEventListener("scroll", handleBodyScroll);
+
+    return () => {
+      headerEl.removeEventListener("scroll", handleHeaderScroll);
+      bodyEl.removeEventListener("scroll", handleBodyScroll);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -480,6 +518,7 @@ const TableLinear = memo(function TableLinear({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showColumnMenu]);
+
   // --- MEMOIZED COMPUTATIONS ---
 
   /**
@@ -563,6 +602,19 @@ const TableLinear = memo(function TableLinear({
   );
 
   /**
+   * Paginated visible columns for horizontal navigation
+   */
+  const paginatedColumns = useMemo(() => {
+    return displayColumns.slice(
+      visibleColumnStart,
+      visibleColumnStart + visibleColumnCount,
+    );
+  }, [displayColumns, visibleColumnStart, visibleColumnCount]);
+
+  const canScrollLeft = visibleColumnStart > 0;
+  const canScrollRight = visibleColumnStart + visibleColumnCount < displayColumns.length;
+
+  /**
    * All selected flag
    */
   const allSelected = useMemo(
@@ -590,15 +642,12 @@ const TableLinear = memo(function TableLinear({
         let newConfig: ISortConfig[];
 
         if (existingIndex === -1) {
-          // Add new sort
           newConfig = [...prev, { key: columnKey, direction: "asc" }];
         } else if (prev[existingIndex].direction === "asc") {
-          // Change to desc
           newConfig = prev.map((s, i) =>
             i === existingIndex ? { ...s, direction: "desc" } : s,
           );
         } else {
-          // Remove sort
           newConfig = prev.filter((_, i) => i !== existingIndex);
         }
 
@@ -671,7 +720,7 @@ const TableLinear = memo(function TableLinear({
     if (selectedRowsData.length === 0) return;
     if (
       window.confirm(
-        `Are you sure you want to delete ${selectedRowsData.length} of these rows? `,
+        `Are you sure you want to delete ${selectedRowsData.length} selected rows?`,
       )
     ) {
       onBulkDelete?.(selectedRowsData);
@@ -769,6 +818,23 @@ const TableLinear = memo(function TableLinear({
     });
   }, []);
 
+  // Column navigation handlers
+  const handleScrollColumnsLeft = useCallback(() => {
+    setVisibleColumnStart((prev) => Math.max(0, prev - 1));
+  }, []);
+
+  const handleScrollColumnsRight = useCallback(() => {
+    setVisibleColumnStart((prev) => {
+      const maxStart = Math.max(0, displayColumns.length - visibleColumnCount);
+      return Math.min(maxStart, prev + 1);
+    });
+  }, [displayColumns.length, visibleColumnCount]);
+
+  // Dark mode toggle
+  const toggleDarkMode = useCallback(() => {
+    setIsDarkMode((prev) => !prev);
+  }, []);
+
   // Column resize handlers
   const handleResizeStart = useCallback(
     (e: React.MouseEvent, columnKey: string, currentWidth: number) => {
@@ -827,11 +893,16 @@ const TableLinear = memo(function TableLinear({
     setCurrentPage(1);
   }, [data.length]);
 
+  // Reset column start when columns change
+  useEffect(() => {
+    setVisibleColumnStart(0);
+  }, [columns.length]);
+
   // --- RENDER HELPERS ---
 
   const renderSortIcon = (columnKey: string) => {
     const direction = getSortDirection(columnKey);
-    if (!direction) return <Sort size={14} className="strock-gray-300" />;
+    if (!direction) return <Sort size={14} className="stroke-gray-300 dark:stroke-gray-500" />;
     if (direction === "asc") return <ArrowUp2 size={14} color="#4b5563" />;
     return <ArrowDown2 size={14} color="#4b5563" />;
   };
@@ -870,8 +941,8 @@ const TableLinear = memo(function TableLinear({
     }
 
     return (
-      <footer className="flex items-center justify-end gap-1 px-4 py-3 border-t border-gray-100">
-        <span className="text-xs text-gray-500 ml-2">
+      <footer className="flex items-center justify-end gap-1 px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+        <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
           {processedData.length} Rows | Page {currentPage} of {totalPages}
         </span>
 
@@ -895,8 +966,8 @@ const TableLinear = memo(function TableLinear({
                 page === currentPage
                   ? "bg-cyan-600 text-white"
                   : page === "..."
-                    ? "cursor-default text-gray-400"
-                    : "border border-gray-200 hover:bg-gray-50 text-gray-700"
+                    ? "cursor-default text-gray-400 dark:text-gray-500"
+                    : "border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
               }`}
           >
             {page}
@@ -905,11 +976,12 @@ const TableLinear = memo(function TableLinear({
         <button
           onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="h-8 px-3 rounded-md border border-gray-200 text-xs font-medium
+          className="h-8 px-3 rounded-md border border-gray-200 dark:border-gray-600 text-xs font-medium
                      disabled:opacity-40 disabled:cursor-not-allowed
-                     hover:bg-gray-50 transition-colors"
+                     hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors
+                     text-gray-700 dark:text-gray-300"
         >
-          Next{" "}
+          Next
         </button>
       </footer>
     );
@@ -918,12 +990,12 @@ const TableLinear = memo(function TableLinear({
   const renderAgreeBar = () => {
     if (!agreeBar) return null;
 
-    const summaries = [
-      { label: "agree Bar", value: 10 },
-      { label: "agree Bar", value: 10 },
-      { label: "agree Bar", value: 10 },
-      { label: "agree Bar", value: 10 },
-      { label: "agree Bar", value: 10 },
+    const summaries = summaryData || [
+      { label: "Total Records", value: processedData.length },
+      { label: "Selected", value: selectedRowsData.length },
+      { label: "Filtered", value: processedData.length },
+      { label: "Pages", value: totalPages },
+      { label: "Current Page", value: currentPage },
     ];
 
     return (
@@ -932,13 +1004,13 @@ const TableLinear = memo(function TableLinear({
           <div
             key={idx}
             className="flex h-11 flex-1 min-w-[120px] items-center justify-between 
-                       rounded-lg bg-white px-4 py-2 shadow-sm border border-gray-100
+                       rounded-lg bg-white dark:bg-gray-800 px-4 py-2 shadow-sm border border-gray-100 dark:border-gray-700
                        hover:shadow-md transition-shadow"
           >
-            <span className="text-xs text-gray-500 font-medium">
+            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
               {item.label}
             </span>
-            <span className="text-sm font-bold text-cyan-700">
+            <span className="text-sm font-bold text-cyan-700 dark:text-cyan-400">
               {item.value}
             </span>
           </div>
@@ -949,31 +1021,34 @@ const TableLinear = memo(function TableLinear({
 
   // --- MAIN RENDER ---
 
+  const themeClass = isDarkMode ? "dark" : "";
+
   return (
     <section
-      className="overflow-hidden rounded-xl border border-gray-200 bg-[#f4f7fc] shadow-sm"
+      className={`overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-[#f4f7fc] dark:bg-gray-900 shadow-sm ${themeClass}`}
       style={{
         width: geo?.width,
         height: geo?.height,
         fontSize,
       }}
+      data-theme={isDarkMode ? "dark" : "light"}
     >
       {/* Table Header Toolbar */}
-      <header className="flex flex-wrap items-center justify-between gap-3 rounded-t-xl px-4 py-3 bg-[#f4f7fc] backdrop-blur-sm">
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-t-xl px-4 py-3 bg-[#f4f7fc] dark:bg-gray-900 backdrop-blur-sm">
         <div className="flex items-center gap-4">
-          <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+          <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
             {title}
           </h3>
 
           {/* View/Edit Toggle */}
-          <div className="inline-flex bg-gray-100 rounded-lg p-0.5 border border-gray-200">
+          <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 border border-gray-200 dark:border-gray-600">
             <button
               onClick={() => setIsEditMode("view")}
               className={`flex items-center justify-center gap-1.5 px-4 h-7 rounded-md text-xs font-medium transition-all duration-200
                 ${
                   isEditMode === "view"
                     ? "text-white bg-cyan-600 shadow-sm stroke-white"
-                    : "text-gray-600 hover:text-gray-800 stroke-gray-600 hover:stroke-gray-800"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 stroke-gray-600 dark:stroke-gray-400 hover:stroke-gray-800 dark:hover:stroke-gray-200"
                 }`}
             >
               <MoreSquare size={16} />
@@ -985,24 +1060,75 @@ const TableLinear = memo(function TableLinear({
                 ${
                   isEditMode === "edit"
                     ? "text-white bg-cyan-600 shadow-sm stroke-white"
-                    : "text-gray-600 hover:text-gray-800 stroke-gray-600 hover:stroke-gray-800"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 stroke-gray-600 dark:stroke-gray-400 hover:stroke-gray-800 dark:hover:stroke-gray-200"
                 }`}
             >
-              <Edit size={16} />
+              <Edit size={16}  />
               Edit
             </button>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Column Navigation - Previous */}
+          {displayColumns.length > visibleColumnCount && (
+            <button
+              onClick={handleScrollColumnsLeft}
+              disabled={!canScrollLeft}
+              className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600
+                         hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Previous columns"
+            >
+              <ArrowLeft2 size={16} className="stroke-gray-600 dark:stroke-gray-400" />
+            </button>
+          )}
+
+          {/* Column Navigation - Next */}
+          {displayColumns.length > visibleColumnCount && (
+            <button
+              onClick={handleScrollColumnsRight}
+              disabled={!canScrollRight}
+              className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600
+                         hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Next columns"
+            >
+              <ArrowRight2 size={16} className="stroke-gray-600 dark:stroke-gray-400" />
+            </button>
+          )}
+
+          {/* Column indicator */}
+          {displayColumns.length > visibleColumnCount && (
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {visibleColumnStart + 1}-{Math.min(visibleColumnStart + visibleColumnCount, displayColumns.length)} of {displayColumns.length}
+            </span>
+          )}
+
+          {/* Dark Mode Toggle */}
+          {enableDarkMode && (
+            <button
+              onClick={toggleDarkMode}
+              className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600
+                         hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {isDarkMode ? (
+                <Sun size={16} className="stroke-yellow-500" />
+              ) : (
+                <Moon size={16} className="stroke-gray-600" />
+              )}
+            </button>
+          )}
+
           {/* Add Button */}
           <button
             className="h-8 px-3 flex items-center gap-1.5 rounded-lg bg-transparent text-[#0891b2] border border-[#0891b2]
-                       text-xs font-bold active:scale-95 transition-all shadow-sm"
+                       text-xs font-bold active:scale-95 transition-all shadow-sm
+                       dark:text-cyan-400 dark:border-cyan-400"
           >
-            <AddCircle size={16} variant="Outline" color="#0891b2" />
+            <AddCircle size={16} variant="Outline" color={isDarkMode ? "#22d3ee" : "#0891b2"} />
             ADD
           </button>
+
           {/* Column Visibility Toggle */}
           <div className="relative">
             <button
@@ -1023,17 +1149,17 @@ const TableLinear = memo(function TableLinear({
                   setShowColumnMenu(true);
                 }
               }}
-              className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               title="Column Management"
             >
-              <Setting2 size={16} color="#4b5563" />
+              <Setting2 size={16} className="stroke-gray-600 dark:stroke-gray-400" />
             </button>
             {showColumnMenu &&
               menuPosition &&
               createPortal(
                 <div
                   ref={menuRef}
-                  className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-2"
+                  className="fixed bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 py-2"
                   style={{
                     top: menuPosition.top,
                     left: menuPosition.left,
@@ -1041,47 +1167,50 @@ const TableLinear = memo(function TableLinear({
                     zIndex: 9999,
                   }}
                 >
-                  <div className="px-3 py-1.5 text-xs font-bold text-gray-500 border-b border-gray-100 mb-1">
+                  <div className="px-3 py-1.5 text-xs font-bold text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 mb-1">
                     Show columns
                   </div>
                   {columns.map((col) => (
                     <label
                       key={col.key}
-                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer"
+                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                     >
                       <input
                         type="checkbox"
                         checked={visibleColumns.has(col.key)}
                         onChange={() => toggleColumnVisibility(col.key)}
-                        className="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                        className="rounded border-gray-300 dark:border-gray-600 text-cyan-600 focus:ring-cyan-500"
                       />
-                      <span className="text-xs text-gray-700">{col.title}</span>
+                      <span className="text-xs text-gray-700 dark:text-gray-300">{col.title}</span>
                     </label>
                   ))}
                 </div>,
                 document.body,
               )}
           </div>
+
           {/* Search */}
           <div className="relative">
             <FilterSearch
               size={16}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 stroke-gray-400 dark:stroke-gray-500"
             />
             <input
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Search . . ."
-              className="h-8 w-48 rounded-lg border border-gray-200 pr-9 pl-3 text-xs
+              placeholder="Search..."
+              className="h-8 w-48 rounded-lg border border-gray-200 dark:border-gray-600 pr-9 pl-3 text-xs
                          focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100
-                         bg-white transition-all"
+                         bg-white dark:bg-gray-800 transition-all
+                         text-gray-700 dark:text-gray-200
+                         placeholder:text-gray-400 dark:placeholder:text-gray-500"
             />
             {search && (
               <button
                 onClick={() => handleSearch("")}
-                className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               >
-                <CloseCircle size={14} color="#4b5563" />
+                <CloseCircle size={14} className="stroke-gray-500 dark:stroke-gray-400" />
               </button>
             )}
           </div>
@@ -1090,37 +1219,37 @@ const TableLinear = memo(function TableLinear({
           {enableExport && (
             <button
               onClick={handleExport}
-              className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-gray-200
-                         text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-600
+                         text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               title="Export CSV"
             >
-              <DocumentDownload size={14} color="#4b5563" />
+              <DocumentDownload size={14} className="stroke-gray-600 dark:stroke-gray-400" />
               Export
             </button>
           )}
 
           {/* Bulk Actions */}
           {selectedRowsData.length > 0 && (
-            <div className="flex items-center gap-2 bg-red-50 rounded-lg px-3 py-1">
-              <span className="text-xs text-red-600 font-medium">
-                {selectedRowsData.length} Select
+            <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-1">
+              <span className="text-xs text-red-600 dark:text-red-400 font-medium">
+                {selectedRowsData.length} Selected
               </span>
               <button
                 onClick={handleBulkDelete}
-                className="text-red-500 hover:text-red-700 transition-colors"
-                title="Group deletion"
+                className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+                title="Delete selected"
               >
-                <Trash size={16} className="stroke-black" />
+                <Trash size={16} className="stroke-black dark:stroke-gray-300" />
               </button>
               <button
                 onClick={() => {
                   setSelectedRows(new Set());
                   onSelect?.([]);
                 }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-                title="cancle"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                title="Cancel selection"
               >
-                <CloseCircle size={16} className="stroke-black" />
+                <CloseCircle size={16} className="stroke-black dark:stroke-gray-300" />
               </button>
             </div>
           )}
@@ -1144,18 +1273,19 @@ const TableLinear = memo(function TableLinear({
               style={{ backgroundColor: headerBg }}
             >
               {selection && (
-                <th className="px-3 w-10">
+                <th className="px-3 w-10 sticky left-0 z-20"
+                    style={{ backgroundColor: headerBg }}>
                   <input
                     type="checkbox"
                     checked={allSelected}
                     onChange={toggleAll}
-                    className="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                    className="rounded border-gray-300 dark:border-gray-600 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
                     aria-label="Select all"
                   />
                 </th>
               )}
 
-              {displayColumns.map((column) => (
+              {paginatedColumns.map((column) => (
                 <th
                   key={column.key}
                   className="px-3 relative group select-none"
@@ -1166,14 +1296,14 @@ const TableLinear = memo(function TableLinear({
                   }}
                 >
                   <div className="flex items-center gap-1">
-                    <span className="font-semibold text-gray-700">
+                    <span className="font-semibold text-gray-700 dark:text-gray-200">
                       {column.title}
                     </span>
                     {column.sortable && (
                       <button
                         onClick={() => handleSort(column.key)}
-                        className="p-0.5 rounded hover:bg-white/50 transition-colors"
-                        aria-label={`sorting ${column.title}`}
+                        className="p-0.5 rounded hover:bg-white/50 dark:hover:bg-gray-700/50 transition-colors"
+                        aria-label={`Sort by ${column.title}`}
                       >
                         {renderSortIcon(column.key)}
                       </button>
@@ -1209,15 +1339,19 @@ const TableLinear = memo(function TableLinear({
                 </th>
               ))}
 
-              <th className="px-3 w-10">
-                <Setting2 size={18} color="#4b5563" />
+              {/* Fixed Action Column */}
+              <th 
+                className="px-5 w-10 sticky right-0 z-20 bg-red-600"
+                style={{ backgroundColor: headerBg , }}
+              >
+                <Setting2 size={18} className="stroke-gray-600 dark:stroke-gray-400" />
               </th>
             </tr>
           </thead>
 
           {/* Table Body */}
           {loading ? (
-            <TableSkeleton columns={displayColumns} rowCount={5} />
+            <TableSkeleton columns={paginatedColumns} rowCount={5} />
           ) : paginatedData.length === 0 ? (
             <EmptyState text={emptyText} />
           ) : (
@@ -1230,28 +1364,26 @@ const TableLinear = memo(function TableLinear({
                 return (
                   <React.Fragment key={key}>
                     <tr
-                      className={`h-10 transition-colors duration-150 cursor-pointer
+                      className={`relative h-10 transition-colors duration-150 cursor-pointer
                         ${
                           isSelected
-                            ? "bg-cyan-50"
+                            ? "bg-cyan-50 dark:bg-cyan-900/20"
                             : rowIndex % 2 === 0
-                              ? "bg-white"
+                              ? "bg-white dark:bg-gray-900"
                               : ""
                         }
-                        hover:bg-[${rowHoverBg}]
                       `}
                       style={{
                         backgroundColor: isSelected
-                          ? "#ecfeff"
+                          ? isDarkMode ? "#164e63" : "#ecfeff"
                           : rowIndex % 2 === 1
-                            ? stripeColor
-                            : "white",
+                            ? isDarkMode ? "#1f2937" : stripeColor
+                            : isDarkMode ? "#111827" : "white",
                       }}
                       onClick={() => onRowClick?.(row, rowIndex)}
                       onDoubleClick={() => {
                         if (isEditMode === "edit") {
-                          // Start inline edit on first editable column
-                          const firstEditable = displayColumns.find(
+                          const firstEditable = paginatedColumns.find(
                             (c) => c.editable,
                           );
                           if (firstEditable) {
@@ -1275,23 +1407,30 @@ const TableLinear = memo(function TableLinear({
                     >
                       {selection && (
                         <td
-                          className="px-3"
+                          className="px-3 sticky left-0 z-10"
+                          style={{
+                            backgroundColor: isSelected
+                              ? isDarkMode ? "#164e63" : "#ecfeff"
+                              : rowIndex % 2 === 1
+                                ? isDarkMode ? "#1f2937" : stripeColor
+                                : isDarkMode ? "#111827" : "white",top:"40px"
+                          }}
                           onClick={(e) => e.stopPropagation()}
                         >
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleRow(row, rowIndex)}
-                            className="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-                            aria-label={`انتخاب ردیف ${rowIndex + 1}`}
+                            className="rounded border-gray-300 dark:border-gray-600 text-cyan-600 focus:ring-cyan-500"
+                            aria-label={`Select row ${rowIndex + 1}`}
                           />
                         </td>
                       )}
 
-                      {displayColumns.map((column) => (
+                      {paginatedColumns.map((column) => (
                         <td
                           key={column.key}
-                          className="px-3 text-xs text-gray-700"
+                          className="px-3 text-xs text-gray-700 dark:text-gray-300"
                           style={{ textAlign: column.align || "left" }}
                         >
                           {inlineEdit.rowIndex === rowIndex &&
@@ -1308,7 +1447,7 @@ const TableLinear = memo(function TableLinear({
                             <span
                               className={
                                 column.editable && isEditMode === "edit"
-                                  ? "border-b border-dashed border-cyan-300 cursor-text hover:bg-cyan-50 px-1 rounded"
+                                  ? "border-b border-dashed border-cyan-300 dark:border-cyan-600 cursor-text hover:bg-cyan-50 dark:hover:bg-cyan-900/30 px-1 rounded"
                                   : ""
                               }
                               onDoubleClick={(e) => {
@@ -1328,20 +1467,30 @@ const TableLinear = memo(function TableLinear({
                         </td>
                       ))}
 
-                      {/* Actions */}
-                      <td className="px-3" onClick={(e) => e.stopPropagation()}>
+                      {/* Fixed Action Column */}
+                      <td 
+                        className="px-3 sticky right-0 z-10"
+                        style={{
+                          backgroundColor: isSelected
+                            ? isDarkMode ? "#164e63" : "#ecfeff"
+                            : rowIndex % 2 === 1
+                              ? isDarkMode ? "#1f2937" : stripeColor
+                              : isDarkMode ? "#111827" : "white",top:"40px"
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="flex items-center justify-center gap-1">
                           {logic?.actions?.expand && (
                             <button
                               onClick={() => toggleExpand(key)}
                               className="flex size-7 items-center justify-center rounded-md 
-                                         hover:bg-gray-100 transition-colors"
-                              aria-label={isExpanded ? "بستن" : "باز کردن"}
+                                         hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                              aria-label={isExpanded ? "Collapse" : "Expand"}
                             >
                               {isExpanded ? (
-                                <ArrowUp2 size={16} />
+                                <ArrowUp2 size={16} className="stroke-gray-600 dark:stroke-gray-400" />
                               ) : (
-                                <ArrowDown2 size={16} />
+                                <ArrowDown2 size={16} className="stroke-gray-600 dark:stroke-gray-400" />
                               )}
                             </button>
                           )}
@@ -1351,18 +1500,18 @@ const TableLinear = memo(function TableLinear({
                               <button
                                 onClick={() => handleEdit(row)}
                                 className="flex size-7 items-center justify-center rounded-md 
-                                           hover:bg-cyan-50 text-cyan-600 transition-colors"
+                                           hover:bg-cyan-50 dark:hover:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 transition-colors"
                                 title="Edit"
                               >
-                                <Edit size={20} color="#4b5563" />
+                                <Edit size={20} className="stroke-gray-600 dark:stroke-gray-400" />
                               </button>
                               <button
                                 onClick={() => handleDelete(row)}
                                 className="flex size-7 items-center justify-center rounded-md 
-                                           hover:bg-red-50 text-red-500 transition-colors"
+                                           hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400 transition-colors"
                                 title="Delete"
                               >
-                                <Trash size={20} color="#4b5563" />
+                                <Trash size={20} className="stroke-gray-600 dark:stroke-gray-400" />
                               </button>
                             </>
                           ) : (
@@ -1370,17 +1519,17 @@ const TableLinear = memo(function TableLinear({
                               <button
                                 onClick={() => handleEdit(row)}
                                 className="flex size-7 items-center justify-center rounded-md 
-                                           hover:bg-gray-100 transition-colors"
-                                title=" Description"
+                                           hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                title="Details"
                               >
-                                <MoreSquare size={20} color="#4b5563" />
+                                <MoreSquare size={20} className="stroke-gray-600 dark:stroke-gray-400" />
                               </button>
                               <button
                                 className="flex size-7 items-center justify-center rounded-md 
-                                           hover:bg-gray-100 transition-colors"
-                                title="go to"
+                                           hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                title="Go to"
                               >
-                                <Send size={20} color="#4b5563" />
+                                <Send size={20} className="stroke-gray-600 dark:stroke-gray-400" />
                               </button>
                             </>
                           )}
@@ -1392,21 +1541,20 @@ const TableLinear = memo(function TableLinear({
                     {isExpanded && logic?.actions?.expand && (
                       <tr>
                         <td
-                          colSpan={displayColumns.length + (selection ? 2 : 1)}
-                          className="px-4 py-3 bg-gray-50 border-b border-gray-100"
+                          colSpan={paginatedColumns.length + (selection ? 2 : 1)}
+                          className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700"
                         >
-                          <div className="text-xs text-gray-600">
-                            {/* Custom expandable content can be rendered here */}
+                          <div className="text-xs text-gray-600 dark:text-gray-400">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                              {displayColumns.map((col) => (
+                              {paginatedColumns.map((col) => (
                                 <div
                                   key={col.key}
                                   className="flex flex-col gap-1"
                                 >
-                                  <span className="text-gray-400 font-medium">
+                                  <span className="text-gray-400 dark:text-gray-500 font-medium">
                                     {col.title}
                                   </span>
-                                  <span className="font-medium text-gray-800">
+                                  <span className="font-medium text-gray-800 dark:text-gray-200">
                                     {col.render
                                       ? col.render(row[col.key], row, rowIndex)
                                       : (row[col.key] ?? "-")}
