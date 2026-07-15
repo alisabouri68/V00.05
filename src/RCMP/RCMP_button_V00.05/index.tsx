@@ -1,10 +1,12 @@
-import { Link } from "react-router-dom";
-import { type ReactNode } from "react";
-import TextIcon from "../RCMP_textIcon_v00.05";
+import { Link } from 'react-router-dom';
+import { type ReactNode } from 'react';
+import TextIcon from '../RCMP_textIcon_v00.05';
 
-type ButtonVariant = "fill" | "secondary" | "outline" | "text";
-type ButtonSize = "default" | "mini" | "small" | "large";
-type ButtonState = "active" | "loading" | "disabled";
+// ====================== Types ======================
+
+type ButtonVariant = 'fill' | 'secondary' | 'outline' | 'text';
+type ButtonSize = 'sm' | 'md' | 'lg' | 'xl'; // 32, 40, 48, 56
+type ButtonState = 'normal' | 'hover' | 'active' | 'disabled' | 'loading';
 
 interface IButtonLogic {
   to?: string;
@@ -15,39 +17,9 @@ interface IButtonLogic {
   size?: ButtonSize;
   fullWidth?: boolean;
   state?: ButtonState;
+  type?: 'headline' | 'lable' | 'body';
   onClick?: (event: React.MouseEvent<HTMLElement>) => void;
-  /** تنظیمات اضافی برای TextIcon (اختیاری) */
-  textIconProps?: {
-    size?:
-      | "xs"
-      | "sm"
-      | "base"
-      | "lg"
-      | "xl"
-      | "2xl"
-      | "3xl"
-      | "4xl"
-      | "5xl"
-      | "6xl"
-      | "7xl"
-      | "8xl"
-      | "9xl";
-    weight?:
-      | "thin"
-      | "light"
-      | "normal"
-      | "medium"
-      | "semibold"
-      | "bold"
-      | "extrabold"
-      | "black";
-    textColor?: string;
-    tracking?: "tighter" | "tight" | "normal" | "wide" | "wider" | "widest";
-    leading?: "none" | "tight" | "snug" | "normal" | "relaxed" | "loose";
-    className?: string;
-    style?: React.CSSProperties;
-    // هر ویژگی دیگری که TextIcon قبول می‌کند
-  };
+  className?: string;
 }
 
 interface IButtonProps {
@@ -60,50 +32,54 @@ interface IButtonProps {
 // ====================== کلاس‌های دکمه ======================
 
 const baseClasses =
-  "inline-flex items-center justify-center font-medium rounded-md transition-colors duration-200";
+  'inline-flex items-center justify-center font-medium rounded-md transition-colors duration-200';
 
-// ✅ استفاده از رنگ‌های سمانتیک دیزاین سیستم
 const variantClasses: Record<ButtonVariant, string> = {
-  fill: "bg-primary text-white hover:bg-primary-hover active:bg-primary-active ",
+  fill:
+    "bg-cyan-600 text-white hover:bg-cyan-700 active:bg-cyan-800 focus:ring-cyan-500 disabled:bg-gray-300 disabled:text-gray-500",
   secondary:
-    "bg-secondary text-white hover:bg-secondary-hover active:bg-secondary-active ",
+    "bg-cyan-200 text-cyan-700 hover:bg-cyan-300 active:bg-cyan-400 focus:ring-cyan-500 disabled:bg-gray-200 disabled:text-gray-400",
   outline:
-    "border border-primary text-primary hover:bg-primary-light active:bg-primary-light/80 ",
-  text: "text-primary hover:underline hover:text-primary-hover ",
-};
-
-const sizeClasses: Record<ButtonSize, string> = {
-  default: "px-4 py-2 text-base",
-  mini: "px-2 min-h-8 max-h-8 text-xs",
-  small: "px-3 py-1 text-sm",
-  large: "px-6 py-3 text-lg",
+    "border-2 border-cyan-600 text-cyan-600 disabled:border-gray-300 disabled:text-gray-400",
+  text: "text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 active:text-cyan-800 active:bg-cyan-100 focus:ring-cyan-500 disabled:text-gray-400",
 };
 
 const stateClasses: Record<ButtonState, string> = {
-  active: "",
-  loading: "opacity-70 cursor-not-allowed",
-  disabled: "opacity-50 cursor-not-allowed",
+  normal: '',
+  hover: 'hover:brightness-95',
+  active: 'active:scale-95',
+  disabled: 'cursor-not-allowed pointer-events-none',
+  loading: '',
 };
 
-const fullWidthClass = "w-full";
+const sizeClasses: Record<ButtonSize, string> = {
+  sm: 'px-3 h-8',
+  md: 'px-4 h-10',
+  lg: 'px-5 h-12',
+  xl: 'px-6 h-14',
+};
+
+
+
+const fullWidthClass = 'w-full';
+
+// ====================== تابع ترکیب کلاس‌ها ======================
 
 function getButtonClasses({
-  variant = "fill",
-  size = "default",
-  state = "active",
+  variant = 'fill',
+  size = 'md',
+  state = 'normal',
   fullWidth = false,
-}: Required<
-  Pick<IButtonLogic, "variant" | "size" | "state" | "fullWidth">
->): string {
+}: Required<Pick<IButtonLogic, 'variant' | 'size' | 'state' | 'fullWidth'>>): string {
   return [
     baseClasses,
     variantClasses[variant],
     sizeClasses[size],
     stateClasses[state],
-    fullWidth ? fullWidthClass : "",
+    fullWidth ? fullWidthClass : '',
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(' ');
 }
 
 // ====================== کامپوننت اصلی ======================
@@ -114,79 +90,68 @@ function Button({ meta, geo, logic, style }: IButtonProps) {
     href,
     content,
     icon,
-    variant = "fill",
-    size = "default",
+    variant = 'fill',
+    size = 'md',
     fullWidth = false,
-    state = "active",
+    type = 'body',
+    state = 'normal',
     onClick,
-    textIconProps = {},
+    className: customClassName, // کلاس‌های اضافی از بیرون
   } = logic || {};
 
-  const isDisabled = state === "disabled" || state === "loading";
+  const isDisabled = state === 'disabled';
+
+  // ====== کلاس‌های نهایی دکمه (قبل از هر استفاده‌ای) ======
   const className = getButtonClasses({ variant, size, state, fullWidth });
 
-  // ====== رندر محتوای داخلی با TextIcon ======
   const renderContent = () => {
-    if (!content && !icon) return null;
+  if (!content && !icon) return null;
 
-    if (typeof content === "string") {
-      return (
-        <TextIcon
-          text={content}
-          logic={{ icon }}
-          size={textIconProps.size || "base"}
-          weight={textIconProps.weight || "medium"}
-          textColor={textIconProps.textColor || "current"}
-          tracking={textIconProps.tracking || "normal"}
-          leading={textIconProps.leading || "normal"}
-          className={textIconProps.className}
-          style={textIconProps.style}
-        />
-      );
-    }
+  if (typeof content === 'string') {
+    // اضافه کردن inline-flex items-center justify-center برای وسط‌چین کردن محتوا درون TextIcon
+    const combinedClassName = `inline-flex items-center justify-center ${sizeClasses[size]} ${customClassName || ''}`.trim();
 
     return (
-      <>
-        {icon && <span className="mr-2">{icon}</span>}
-        {content}
-      </>
+      <TextIcon
+        logic={{
+          text: content,
+          icon: icon,
+          type: type,
+          className: combinedClassName,
+          typographySize:
+            size === 'sm'
+              ? 'md'
+              : size === 'md'
+              ? 'lg'
+              : size === 'lg'
+              ? 'lg'
+              : '2xl',
+        }}
+      />
     );
-  };
+  }
 
-  // ====== اسپینر لودینگ ======
-  const loadingSpinner = state === "loading" && (
-    <span className="ml-2">
-      <svg
-        className="animate-spin h-4 w-4 text-current"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <circle
-          className="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          strokeWidth="4"
-        />
-        <path
-          className="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-        />
-      </svg>
-    </span>
+  return (
+    <>
+      {icon && <span className="mr-2">{icon}</span>}
+      {content}
+    </>
   );
+};
 
-  // ====== رندر نهایی ======
+
   const children = (
     <>
       {renderContent()}
-      {loadingSpinner}
+      {state === 'loading' && (
+        <span className="ml-2">
+          <svg className="animate-spin h-4 w-4 text-current" />
+        </span>
+      )}
     </>
   );
 
+  // ====== رندر نهایی با در نظر گرفتن نوع المان ======
   if (to) {
     return (
       <Link to={to} className={className} style={style} onClick={onClick}>

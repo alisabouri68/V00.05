@@ -530,6 +530,7 @@ console.log('📦 data from props (raw):', data);
   const componentId = useId();
   const settingButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const gearButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
     left: number;
@@ -628,6 +629,14 @@ const handleDrop = (e: React.DragEvent, targetIndex: number) => {
 
     return result;
  }, [reorderableData, filters, search, sortConfig, columns]);
+
+console.log('🔍 reorderableData:', reorderableData);
+console.log('🔍 processedData:', processedData);
+console.log('🔍 visibleColumns:', Array.from(visibleColumns));
+
+
+
+
   const paginatedData = useMemo(() => {
     if (!pagination) return processedData;
     const start = (currentPage - 1) * pageSize;
@@ -653,11 +662,9 @@ const handleDrop = (e: React.DragEvent, targetIndex: number) => {
 
   const canScrollLeft = visibleColumnStart > 0;
   const canScrollRight = visibleColumnStart + visibleColumnCount < displayColumns.length;
-
-const leftHidden = visibleColumnStart;
-const rightHidden = displayColumns.length - (visibleColumnStart + visibleColumnCount);
-
-
+console.log('🔍 paginatedData:', paginatedData);
+console.log('🔍 displayColumns:', displayColumns);
+console.log('🔍 paginatedColumns:', paginatedColumns);
   const allSelected = useMemo(
     () =>
       paginatedData.length > 0 &&
@@ -1265,7 +1272,38 @@ useEffect(() => {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Column Navigation - Previous */}
+            {displayColumns.length > visibleColumnCount && (
+              <button
+                onClick={handleScrollColumnsLeft}
+                disabled={!canScrollLeft}
+                className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600
+                           hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Previous columns"
+              >
+                <ArrowLeft2 size={16} className="stroke-gray-600 dark:stroke-gray-400" />
+              </button>
+            )}
 
+            {/* Column Navigation - Next */}
+            {displayColumns.length > visibleColumnCount && (
+              <button
+                onClick={handleScrollColumnsRight}
+                disabled={!canScrollRight}
+                className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600
+                           hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Next columns"
+              >
+                <ArrowRight2 size={16} className="stroke-gray-600 dark:stroke-gray-400" />
+              </button>
+            )}
+
+            {/* Column indicator */}
+            {displayColumns.length > visibleColumnCount && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {visibleColumnStart + 1}-{Math.min(visibleColumnStart + visibleColumnCount, displayColumns.length)} of {displayColumns.length}
+              </span>
+            )}
 
             {/* Dark Mode Toggle */}
             {enableDarkMode && (
@@ -1330,7 +1368,7 @@ useEffect(() => {
                     style={{
                       top: menuPosition.top,
                       left: menuPosition.left,
-                      minWidth:80,
+                      minWidth: "180px",
                       zIndex: 9999,
                     }}
                   >
@@ -1432,51 +1470,45 @@ useEffect(() => {
           className="overflow-auto custom-scrollbar"
           style={{ maxHeight: geo?.maxHeight || "600px" }}
         >
-          <table className="w-full border-collapse ">
+          <table className="w-full border-collapse">
             {/* Table Head - Sticky */}
-<thead className="sticky top-0" style={{ zIndex: 10 }}>
-  <tr className="h-10 text-left text-xs" style={{ backgroundColor: headerBg }}>
-    {/* ===== سلول کنترل چپ (جایگزین #/همبرگر) ===== */}
-    <th
-      className="px-1 w-12 sticky left-0 z-30 text-center"
-      style={{ backgroundColor: headerBg, left: 0 }}
-    >
-      <div className="flex items-center justify-center gap-0.5">
-        <button
-          onClick={handleScrollColumnsLeft}
-          disabled={!canScrollLeft}
-          className="h-6 w-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 transition-colors"
-          title="ستون‌های قبلی"
-        >
-          <ArrowLeft2 size={14} className="stroke-gray-600 dark:stroke-gray-400" />
-        </button>
-        {leftHidden > 0 && (
-          <span className="text-[10px] bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-1.5 rounded-full font-medium">
-            {leftHidden}
-          </span>
-        )}
-      </div>
-    </th>
+            <thead className="sticky top-0" style={{ zIndex: 10  }}>
+              <tr
+                className="h-10 text-left text-xs"
+                style={{ backgroundColor: headerBg }}
+              >
+                                  <th
+  className="px-3 w-12 sticky left-0 z-15 text-center"
+  style={{
+    backgroundColor: headerBg,
+    left: selection ? '0' : '0',
+  }}
+>
+  {isEditMode === 'edit' ? (
+    // در حالت ویرایش: آیکون سه‌خط
+    <HambergerMenu size={14} className="stroke-gray-400 dark:stroke-gray-500" />
+  ) : (
+    // در حالت نمایش: عنوان "#"
+    <span className="font-semibold text-gray-700 dark:text-gray-200">#</span>
+  )}
+</th>
+                {selection && (
+                  <th className="px-3 w-10 sticky left-0 z-20"
+                      style={{ backgroundColor: headerBg }}>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                      className="rounded border-gray-300 dark:border-gray-600 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                      aria-label="Select all"
+                    />
+                  </th>
+                )}
 
-    {/* ===== ستون انتخاب (checkbox) ===== */}
-    {selection && (
-      <th
-        className="px-3 w-10 sticky left-0 z-20"
-        style={{ backgroundColor: headerBg, left: '48px' }} // بعد از سلول کنترل چپ
-      >
-        <input
-          type="checkbox"
-          checked={allSelected}
-          onChange={toggleAll}
-          className="rounded border-gray-300 dark:border-gray-600 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
-          aria-label="Select all"
-        />
-      </th>
-    )}
-
-    {/* ===== ستون‌های داده (قابل پیمایش) ===== */}
-    {paginatedColumns.map((column) => (
-      <th key={column.key} className="px-3 relative group select-none"
+                {paginatedColumns.map((column) => (
+                  <th
+                    key={column.key}
+                    className="px-3 relative group select-none"
                     style={{
                       width: columnWidths[column.key] || column.width,
                       minWidth: column.minWidth || 80,
@@ -1524,39 +1556,18 @@ useEffect(() => {
                         }
                       />
                     )}
-      </th>
-    ))}
-    {/* ===== ستون اکشن (ثابت در راست) ===== */}
-    <th
-  className="px-3 sticky right-0 z-20 "
-  style={{ backgroundColor: headerBg, }}
->
-  <div className="flex items-center justify-between gap-2">
-  
-      <Setting2 size={24} className="stroke-gray-600 dark:stroke-gray-400" />
-    
-    {/* بخش Next + بج */}
-    <div className="flex items-center gap-1">
-      {rightHidden > 0 && (
-        <span className="inline-flex items-center justify-center min-w-[18px] h-5 px-1.5 text-[10px] font-semibold text-white bg-cyan-500 dark:bg-cyan-400 rounded-full">
-          {rightHidden}
-        </span>
-      )}
-      <button
-        onClick={handleScrollColumnsRight}
-        disabled={!canScrollRight}
-        className="h-6 w-6 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        title="ستون‌های بعدی"
-      >
-        <ArrowRight2 size={14} className="stroke-gray-600 dark:stroke-gray-400" />
-      </button>
-    </div>
-  </div>
-</th>
+                  </th>
+                ))}
 
-
-  </tr>
-</thead>
+                {/* Fixed Action Column */}
+                <th 
+                  className="px-3 w-10 sticky right-0 top-0 z-20"
+                  style={{ backgroundColor: headerBg }}
+                >
+                  <Setting2 size={18} className="stroke-gray-600 dark:stroke-gray-400" />
+                </th>
+              </tr>
+            </thead>
 
             {/* Table Body */}
             {loading ? (
@@ -1574,7 +1585,12 @@ useEffect(() => {
     : rowIndex % 2 === 1
       ? isDarkMode ? '#1f2937' : stripeColor
       : isDarkMode ? '#111827' : 'white';
-      const colSpanCount = paginatedColumns.length + (selection ? 1 : 0) + 3;
+      const colSpanCount = 
+    paginatedColumns.length + 
+    (selection ? 1 : 0) +   
+    1 +                     
+    1;                      
+
 
                   return (
                     <React.Fragment key={key}>
@@ -1703,11 +1719,11 @@ useEffect(() => {
 
                         {/* Fixed Action Column */}
                      <td
-          className="px-3 w-12 sticky z-10"
-          style={{ backgroundColor: rowBgColor , top :'40px', right:0 }}
+          className="px-3 sticky right-0 z-10"
+          style={{ backgroundColor: rowBgColor , top :'40px' }}
           onClick={(e) => e.stopPropagation()}
         >
-                          <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center justify-center gap-1">
                             {logic?.actions?.expand && (
                               <button
                                 onClick={() => toggleExpand(key)}
@@ -1733,7 +1749,7 @@ useEffect(() => {
                                                hover:bg-cyan-50 dark:hover:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 transition-colors"
                                     title="Edit"
                                   >
-                                    <Edit size={20} className="stroke-gray-600 dark:stroke-gray-400" />
+                                    <Edit size={20} className="text-gray-600 dark:text-gray-400" />
                                   </button>
                                 )}
                                 {/* Delete Button - Opens Delete Modal */}
@@ -1744,7 +1760,7 @@ useEffect(() => {
                                                hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400 transition-colors"
                                     title="Delete"
                                   >
-                                    <Trash size={20} className="stroke-gray-600 dark:stroke-gray-400" />
+                                    <Trash size={20} className="text-gray-600 dark:text-gray-400" />
                                   </button>
                                 )}
                               </>

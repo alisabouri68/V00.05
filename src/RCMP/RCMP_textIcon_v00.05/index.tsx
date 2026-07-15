@@ -1,195 +1,100 @@
-import type { ReactNode, CSSProperties } from "react";
+import type { ReactNode, CSSProperties } from 'react'
 
-// ====================== Types ======================
-
-interface ITextStyles {
-  size?:
-    | "xs"
-    | "sm"
-    | "base"
-    | "lg"
-    | "xl"
-    | "2xl"
-    | "3xl"
-    | "4xl"
-    | "5xl"
-    | "6xl"
-    | "7xl"
-    | "8xl"
-    | "9xl";
-  weight?:
-    | "thin"
-    | "light"
-    | "normal"
-    | "medium"
-    | "semibold"
-    | "bold"
-    | "extrabold"
-    | "black";
-  align?: "left" | "center" | "right" | "justify";
-  textColor?: string;
-  font?: "sans" | "serif" | "mono";
-  transform?: "uppercase" | "lowercase" | "capitalize" | "normal-case";
-  decoration?: "underline" | "line-through" | "no-underline";
-  tracking?: "tighter" | "tight" | "normal" | "wide" | "wider" | "widest";
-  leading?: "none" | "tight" | "snug" | "normal" | "relaxed" | "loose";
-  truncate?: boolean;
-  whitespace?: "normal" | "nowrap" | "pre" | "pre-wrap" | "pre-line";
-  cursor?: "pointer" | "default" | "text" | "not-allowed";
-  className?: string;
-  style?: CSSProperties;
+interface IlogicProps {
+  element?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'span' | 'p' | 'pre'
+  text?: string
+  icon?: ReactNode
+  direction?: 'vertical' | 'horizontal'
+  iconPosition?: 'after' | 'before'
+  type?: 'headline' | 'lable' | 'body'
+  typographySize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+  className?: string
+  color?: string // اختیاری برای کنترل رنگ
 }
 
-interface IPropsTextIcon extends ITextStyles {
-  meta?: any;
-  geo?: any;
-  logic?: {
-    icon?: ReactNode;
-    element?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "span" | "p" | "pre";
-  };
-  text?: string;
+interface ITextIconProps {
+  meta?: any
+  geo?: any
+  logic: IlogicProps
+  style?: CSSProperties
 }
 
+const typographyClasses: Record<string, string> = {
+  'headline-2xl': 'text-[56px] leading-[84px] font-bold',
+  'headline-xl': 'text-[48px] leading-[72px] font-bold',
+  'headline-lg': 'text-[40px] leading-[60px] font-bold',
+  'headline-md': 'text-[32px] leading-[56px] font-bold',
+  'headline-sm': 'text-[28px] leading-[42px] font-bold',
+  'headline-xs': 'text-[24px] leading-[36px] font-bold',
 
-const sizeClasses = {
-  xs: "text-xs",
-  sm: "text-sm",
-  base: "text-base",
-  lg: "text-lg",
-  xl: "text-xl",
-  "2xl": "text-2xl",
-  "3xl": "text-3xl",
-  "4xl": "text-4xl",
-  "5xl": "text-5xl",
-  "6xl": "text-6xl",
-  "7xl": "text-7xl",
-  "8xl": "text-8xl",
-  "9xl": "text-9xl",
-} as const;
+  'label-lg': 'text-[22px] leading-[36px] font-semibold',
+  'label-xl': 'text-[20px] leading-[32px] font-semibold',
+  'label-md': 'text-[18px] leading-[28px] font-semibold',
+  'label-sm': 'text-[16px] leading-[26px] font-semibold',
+  'label-xs': 'text-[14px] leading-[22px] font-semibold',
+  'label-2xs': 'text-[12px] leading-[20px] font-semibold',
 
-const weightClasses = {
-  thin: "font-thin",
-  light: "font-light",
-  normal: "font-normal",
-  medium: "font-medium",
-  semibold: "font-semibold",
-  bold: "font-bold",
-  extrabold: "font-extrabold",
-  black: "font-black",
-} as const;
+  'body-xl': 'text-[18px] leading-[28px] font-normal',
+  'body-lg': 'text-[16px] leading-[26px] font-normal',
+  'body-md': 'text-[14px] leading-[22px] font-normal',
+  'body-sm': 'text-[12px] leading-[20px] font-normal',
+  'body-xs': 'text-[10px] leading-[16px] font-normal',
+}
 
-const alignClasses = {
-  left: "text-left",
-  center: "text-center",
-  right: "text-right",
-  justify: "text-justify",
-} as const;
+function TextIcon({ meta, geo, logic, style = {} }: ITextIconProps) {
+  const {
+    element: Element = 'span',
+    text,
+    icon,
+    direction = 'horizontal',
+    iconPosition = 'before',
+    type = 'body',
+    typographySize = 'md',
+    className = '',
+    color = '',
+  } = logic
 
-const fontClasses = {
-  sans: "font-sans",
-  serif: "font-serif",
-  mono: "font-mono",
-} as const;
+  const key = `${type}-${typographySize}` as keyof typeof typographyClasses
+  const baseTypographyClass = typographyClasses[key] || ''
+  const combinedClassName = [baseTypographyClass, color, className]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
 
-const transformClasses = {
-  uppercase: "uppercase",
-  lowercase: "lowercase",
-  capitalize: "capitalize",
-  "normal-case": "normal-case",
-} as const;
+  // اگر آیکون وجود نداشته باشد، فقط متن برگردان
+  if (!icon) {
+    return (
+      <div className={combinedClassName} style={style}>
+        <Element>{text}</Element>
+      </div>
+    )
+  }
 
-const decorationClasses = {
-  underline: "underline",
-  "line-through": "line-through",
-  "no-underline": "no-underline",
-} as const;
+  // چینش بر اساس direction
+  const flexDirection = direction === 'vertical' ? 'flex-col' : 'flex-row items-center'
+  const gap = direction === 'vertical' ? 'gap-1' : 'gap-2'
 
-const trackingClasses = {
-  tighter: "tracking-tighter",
-  tight: "tracking-tight",
-  normal: "tracking-normal",
-  wide: "tracking-wide",
-  wider: "tracking-wider",
-  widest: "tracking-widest",
-} as const;
-
-const leadingClasses = {
-  none: "leading-none",
-  tight: "leading-tight",
-  snug: "leading-snug",
-  normal: "leading-normal",
-  relaxed: "leading-relaxed",
-  loose: "leading-loose",
-} as const;
-
-const whitespaceClasses = {
-  normal: "whitespace-normal",
-  nowrap: "whitespace-nowrap",
-  pre: "whitespace-pre",
-  "pre-wrap": "whitespace-pre-wrap",
-  "pre-line": "whitespace-pre-line",
-} as const;
-
-const cursorClasses = {
-  pointer: "cursor-pointer",
-  default: "cursor-default",
-  text: "cursor-text",
-  "not-allowed": "cursor-not-allowed",
-} as const;
-
-
-const cn = (...classes: (string | undefined | false)[]) =>
-  classes.filter(Boolean).join(" ");
-
-
-function TextIcon({
-  meta,
-  geo,
-  logic,
-  text = "",
-  size = "base",
-  weight = "normal",
-  align = "left",
-  textColor,
-  font,
-  transform,
-  decoration,
-  tracking,
-  leading,
-  truncate = false,
-  whitespace,
-  cursor,
-  className,
-  style,
-}: IPropsTextIcon) {
-  const Element = logic?.element ?? "span";
-
-  const combinedClasses = cn(
-    "inline-flex items-center gap-2",
-    // نگاشت‌ها
-    sizeClasses[size],
-    weightClasses[weight],
-    alignClasses[align],
-    textColor,
-    font && fontClasses[font],
-    transform && transformClasses[transform],
-    decoration && decorationClasses[decoration],
-    tracking && trackingClasses[tracking],
-    leading && leadingClasses[leading],
-    truncate && "truncate",
-    whitespace && whitespaceClasses[whitespace],
-    cursor && cursorClasses[cursor],
-    className,
-  );
+  // ترتیب آیکون و متن
+  const content =
+    iconPosition === 'before' ? (
+      <>
+        {icon}
+        {text && <span>{text}</span>}
+      </>
+    ) : (
+      <>
+        {text && <span>{text}</span>}
+        {icon}
+      </>
+    )
 
   return (
-    <Element className={combinedClasses} style={style}>
-      {logic?.icon && (
-        <span className="inline-flex shrink-0">{logic.icon}</span>
-      )}
-      <span>{text}</span>
-    </Element>
-  );
+    <div className={`inline-flex ${flexDirection} ${gap} ${combinedClassName}`} style={style}>
+      <Element className="inline-flex items-center gap-2">
+        {content}
+      </Element>
+    </div>
+  )
 }
 
-export default TextIcon;
+export default TextIcon
