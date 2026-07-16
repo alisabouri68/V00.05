@@ -5,7 +5,7 @@ import TextIcon from '../RCMP_textIcon_v00.05';
 // ====================== Types ======================
 
 type ButtonVariant = 'fill' | 'secondary' | 'outline' | 'text';
-type ButtonSize = 'sm' | 'md' | 'lg' | 'xl'; // 32, 40, 48, 56
+type ButtonSize = "xs"|'sm' | 'md' | 'lg' | 'xl'; // 32, 40, 48, 56
 type ButtonState = 'normal' | 'hover' | 'active' | 'disabled' | 'loading';
 
 interface IButtonLogic {
@@ -53,6 +53,7 @@ const stateClasses: Record<ButtonState, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
+  xs: 'w-6 h-6',
   sm: 'px-3 h-8',
   md: 'px-4 h-10',
   lg: 'px-5 h-12',
@@ -133,7 +134,7 @@ function Button({ meta, geo, logic, style }: IButtonProps) {
 
   return (
     <>
-      {icon && <span className="mr-2">{icon}</span>}
+      {icon && <span className="">{icon}</span>}
       {content}
     </>
   );

@@ -32,6 +32,9 @@ const sheetComponentMap = {
     sheet_4: {
         component: lazy(() => import("./BNDL_medical/CANV_medical/WRPR_desk/sheets/sheet4")),
     },
+    button: {
+        component: lazy(() => import("./BNDL_medical/CANV_medical/WRPR_desk/sheets/button")),
+    },
 };
 
 

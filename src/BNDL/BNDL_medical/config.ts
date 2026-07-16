@@ -35,6 +35,12 @@ export default {
           order: 1,
           color: "bg-pink-100",
         },
+        {
+          sheetName: "Button",
+          slug: "button",
+          order: 1,
+          color: "bg-pink-300",
+        },
       ]
     },
   ]

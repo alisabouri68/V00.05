@@ -18,6 +18,7 @@ import {
   DropdownItem,
   Dropdown as OrigDropdown,
 } from "flowbite-react";
+import DropdownLarge from "RCMP/RCMP_dropdown_V00.05";
 
 function Header() {
   // const navigate = useNavigate();
@@ -80,30 +81,23 @@ function Header() {
             ),
           }}
         />
-
-        <Dropdown
-          logic={{
-            items: [
+<DropdownLarge logic={{options:[
               {
-                id: "English",
+                key: "1",
                 label: "English",
-                icon: () => <FontAwesomeIcon icon={faGlobe} />,
+                value: "English",
+                icon: <FontAwesomeIcon icon={faGlobe} />,
               },
               {
-                id: "Farsi",
+                key: "2",
                 label: "Farsi",
-                icon: () => <FontAwesomeIcon icon={faGlobe} />,
+                value: "Farsi",
+                icon: <FontAwesomeIcon icon={faGlobe} />,
               },
-            ],
-            inline: true,
-            label: (
-              <>
-                <FontAwesomeIcon icon={faGlobe} />
-                <span className="px-2">English</span>
-              </>
-            ),
-          }}
-        />
+            ],}}
+            style={{borderColor:"none"}}
+            />
+
 
         <div className="flex items-center gap-4">
           <OrigDropdown
