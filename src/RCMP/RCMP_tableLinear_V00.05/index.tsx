@@ -316,8 +316,7 @@ const InlineEditCell = memo(
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={() => onSave(editValue)}
-          className="h-7 w-full rounded border border-cyan-500 px-2 text-xs 
-                   focus:outline-none focus:ring-2 focus:ring-cyan-200
+          className="h-7 w-full rounded px-2 text-sm border-none
                    bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
         />
       </div>
@@ -325,6 +324,83 @@ const InlineEditCell = memo(
   },
 );
 InlineEditCell.displayName = "InlineEditCell";
+
+// **
+//  * Column Filter Component
+//  */
+const ColumnFilter = memo(
+  ({
+    column,
+    value,
+    onChange,
+  }: {
+    column: IColumn;
+    value: string;
+    onChange: (val: string) => void;
+  }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+      if (isOpen) {
+        inputRef.current?.focus();
+      }
+    }, [isOpen]);
+
+    if (!column.filterable) return null;
+
+    return (
+      <div className="relative inline-block">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
+          className="ml-1 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          aria-label={`Filter ${column.title}`}
+        >
+          <FilterSearch
+            size={12}
+            className="stroke-gray-400 dark:stroke-gray-500"
+          />
+        </button>
+        {isOpen && (
+          <div
+            className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 z-20 min-w-[180px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {column.filterRender ? (
+              column.filterRender(value, onChange)
+            ) : (
+              <input
+                ref={inputRef}
+                type="text"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={`Filter ${column.title}`}
+                className="w-full h-7 rounded border border-gray-200 dark:border-gray-600 px-2 text-sm
+                         bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200
+                         focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              />
+            )}
+            <div className="flex justify-end mt-1">
+              <button
+                onClick={() => {
+                  onChange("");
+                  setIsOpen(false);
+                }}
+                className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  },
+);
+ColumnFilter.displayName = "ColumnFilter";
 
 // ============================================
 // MAIN COMPONENT
@@ -955,53 +1031,78 @@ const renderPagination = () => {
     handlePageChange(1);              // رفتن به صفحه اول
   };
 
-    return (
-      <footer className="flex items-center justify-end gap-1 px-4 py-3 border-t border-gray-100 dark:border-gray-700">
-        <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-          {processedData.length} Rows | Page {currentPage} of {totalPages}
-        </span>
+  return (
+    <footer 
+      className="sticky bottom-0 z-40 flex items-center justify-between gap-2 px-4 py-3 
+                 border-t border-gray-100 dark:border-gray-700
+                 bg-white/80 dark:bg-gray-900/80 
+                 backdrop-blur-md"
+    >
+      {/* بخش چپ: بازه ردیف‌ها */}
+      <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+        {start} – {end} of {totalItems}
+      </span>
 
-        <Button
-          logic={{
-            onClick: () => handlePageChange(currentPage - 1),
-            variant: "outline",
-            state: `${currentPage === 1 ? "disabled" : "active"}`,
-            content: "Previous",
-            size: "sm",
-            type:"body"
-          }}
-        />
-        {pages.map((page, idx) => (
-          <button
-            key={idx}
-            onClick={() => typeof page === "number" && handlePageChange(page)}
-            disabled={page === "..."}
-            className={`h-8 min-w-[2rem] px-2 rounded-md text-xs font-medium transition-colors
-              ${
-                page === currentPage
-                  ? "bg-cyan-600 text-white"
-                  : page === "..."
-                    ? "cursor-default text-gray-400 dark:text-gray-500"
-                    : "border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              }`}
-          >
-            {page}
-          </button>
-        ))}
-        <button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="h-8 px-3 rounded-md border border-gray-200 dark:border-gray-600 text-xs font-medium
-                     disabled:opacity-40 disabled:cursor-not-allowed
-                     hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors
-                     text-gray-700 dark:text-gray-300"
-        >
-          Next
-        </button>
-      </footer>
-    );
-  };
+      <div className="flex items-center gap-6">
+        {/* بخش وسط: انتخاب تعداد ردیف در هر صفحه */}
+        <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+          <div className="flex items-center gap-1">
+            <span>Rows per page:</span>
+            <DropdownLarge
+              logic={{
+                options: [
+                  { key: 1, label: '10', value: "10" },
+                  { key: 2, label: '20', value: "20" },
+                  { key: 3, label: '50', value: "50" },
+                  { key: 4, label: '100', value: "100" }
+                ],
+                onChange: handleRowsPerPageChange,
+                searchable: false,
+                clearable: false,
+                value: String(rowsPerPage), // مقدار فعلی را به عنوان رشته ارسال می‌کنیم
+              }}
+            />
+          </div>
+        </div>
 
+        {/* بخش راست: دکمه‌های ناوبری صفحه */}
+        <div className="flex items-center gap-3">
+          <Button
+            logic={{
+              onClick: () => handlePageChange(currentPage - 1),
+              variant: "outline",
+              state: currentPage === 1 ? "disabled" : "active",
+              icon: (
+                <ArrowLeft2
+                  size={18}
+                  className="stroke-gray-600 dark:stroke-gray-400"
+                />
+              ),
+              size: "xs",
+            }}
+          />
+          <span>
+            {currentPage} / {totalPages}
+          </span>
+          <Button
+            logic={{
+              onClick: () => handlePageChange(currentPage + 1),
+              variant: "outline",
+              state: currentPage === totalPages ? "disabled" : "active",
+              icon: (
+                <ArrowRight2
+                  size={18}
+                  className="stroke-gray-600 dark:stroke-gray-400"
+                />
+              ),
+              size: "xs",
+            }}
+          />
+        </div>
+      </div>
+    </footer>
+  );
+};
   const renderAgreeBar = () => {
     if (!agreeBar) return null;
 
@@ -1058,19 +1159,26 @@ const renderPagination = () => {
           onCancel: () => setAddModalOpen(false),
           closeOnBackdropClick: true,
           closeOnEscapeKey: true,
-          children:
-          <div className="space-y-4">
-            {columns.filter(c => !c.hidden && c.key !== rowKey).map((column) => (
-              <div key={column.key} className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  {column.title}
-                </label>
-                <input
-                  type={column.dataType === "number" ? "number" : "text"}
-                  value={addFormData[column.key] || ""}
-                  onChange={(e) => setAddFormData((prev:any) => ({ ...prev, [column.key]: e.target.value }))}
-                  placeholder={`Enter ${column.title}`}
-                  className="h-9 rounded-lg border border-gray-200 dark:border-gray-600 px-3 text-sm
+          children: (
+            <div className="space-y-4">
+              {columns
+                .filter((c) => !c.hidden && c.key !== rowKey)
+                .map((column) => (
+                  <div key={column.key} className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {column.title}
+                    </label>
+                    <input
+                      type={column.dataType === "number" ? "number" : "text"}
+                      value={addFormData[column.key] || ""}
+                      onChange={(e) =>
+                        setAddFormData((prev: any) => ({
+                          ...prev,
+                          [column.key]: e.target.value,
+                        }))
+                      }
+                      placeholder={`Enter ${column.title}`}
+                      className="h-9 rounded-lg border border-gray-200 dark:border-gray-600 px-3 text-sm
                            focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100
                            bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200
                            placeholder:text-gray-400 dark:placeholder:text-gray-500"
@@ -1105,18 +1213,26 @@ const renderPagination = () => {
           confirmText: config.confirmText || "Save Changes",
           cancelText: config.cancelText || "Cancel",
           confirmButtonVariant: "primary",
-          children:  <div className="space-y-4">
-            {columns.filter(c => !c.hidden && c.key !== rowKey).map((column) => (
-              <div key={column.key} className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  {column.title}
-                </label>
-                <input
-                  type={column.dataType === "number" ? "number" : "text"}
-                  value={editFormData[column.key] || ""}
-                  onChange={(e) => setEditFormData((prev:any) => ({ ...prev, [column.key]: e.target.value }))}
-                  placeholder={`Enter ${column.title}`}
-                  className="h-9 rounded-lg border border-gray-200 dark:border-gray-600 px-3 text-sm
+          children: (
+            <div className="space-y-4">
+              {columns
+                .filter((c) => !c.hidden && c.key !== rowKey)
+                .map((column) => (
+                  <div key={column.key} className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {column.title}
+                    </label>
+                    <input
+                      type={column.dataType === "number" ? "number" : "text"}
+                      value={editFormData[column.key] || ""}
+                      onChange={(e) =>
+                        setEditFormData((prev: any) => ({
+                          ...prev,
+                          [column.key]: e.target.value,
+                        }))
+                      }
+                      placeholder={`Enter ${column.title}`}
+                      className="h-9 rounded-lg border border-gray-200 dark:border-gray-600 px-3 text-sm
                            focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100
                            bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200
                            placeholder:text-gray-400 dark:placeholder:text-gray-500"
@@ -1327,7 +1443,9 @@ const renderPagination = () => {
                           onChange={() => toggleColumnVisibility(col.key)}
                           className="rounded border-gray-300 dark:border-gray-600 text-cyan-600 focus:ring-cyan-500"
                         />
-                        <span className="text-xs text-gray-700 dark:text-gray-300">{col.title}</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {col.title}
+                        </span>
                       </label>
                     ))}
                   </div>,
@@ -1408,29 +1526,35 @@ const renderPagination = () => {
         >
           <table className="w-full border-collapse ">
             {/* Table Head - Sticky */}
-<thead className="sticky top-0" style={{ zIndex: 10 }}>
-  <tr className="h-10 text-left text-xs" style={{ backgroundColor: headerBg }}>
-    {/* ===== سلول کنترل چپ (جایگزین #/همبرگر) ===== */}
-    <th
-      className="px-1 w-12 sticky left-0 z-30 text-center"
-      style={{ backgroundColor: headerBg, left: 0 }}
-    >
-      <div className="flex items-center justify-center gap-0.5">
-        <button
-          onClick={handleScrollColumnsLeft}
-          disabled={!canScrollLeft}
-          className="h-6 w-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 transition-colors"
-          title="ستون‌های قبلی"
-        >
-          <ArrowLeft2 size={14} className="stroke-gray-600 dark:stroke-gray-400" />
-        </button>
-        {leftHidden > 0 && (
-          <span className="text-[10px] bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-1.5 rounded-full font-medium">
-            {leftHidden}
-          </span>
-        )}
-      </div>
-    </th>
+            <thead className="sticky top-0" style={{ zIndex: 30 }}>
+              <tr
+                className="h-10 text-left text-sm"
+                style={{ backgroundColor: headerBg }}
+              >
+                {/* ===== سلول کنترل چپ (جایگزین #/همبرگر) ===== */}
+                <th
+                  className="px-1 w-12 sticky left-0 z-30 text-center"
+                  style={{ backgroundColor: headerBg, left: 0 }}
+                >
+                  <div className="flex items-center justify-center gap-0.5">
+                    <button
+                      onClick={handleScrollColumnsLeft}
+                      disabled={!canScrollLeft}
+                      className="relative h-6 w-6 flex items-center justify-center rounded-md border-2 border-gray-500 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      title="prev"
+                    >
+                      <ArrowLeft2
+                        size={16}
+                        className="stroke-gray-600 dark:stroke-gray-400"
+                      />
+                      {leftHidden > 0 && (
+                        <span className="absolute -left-2.5 -bottom-2.5 inline-flex items-center justify-center text-center w-5 h-5 px-0.5 text-[14px] font-light text-white bg-cyan-500 dark:bg-cyan-400 rounded-full">
+                          {leftHidden}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </th>
 
                 {/* ===== ستون انتخاب (checkbox) ===== */}
                 {selection && (
@@ -1611,53 +1735,54 @@ const renderPagination = () => {
                         role="row"
                         aria-selected={isSelected}
                       >
-                             <td
-  className="px-3 sticky left-0 z-15 text-center text-xs"
-  style={{
-    backgroundColor: rowBgColor,
-    left: selection ? '0' : '0',
-  }}
->
-  {isEditMode === 'edit' ? (
-    <div
-      draggable
-      onDragStart={(e) => handleDragStart(e, rowIndex)}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => handleDrop(e, rowIndex)}
-      className="cursor-grab flex justify-center items-center py-1 active:cursor-grabbing"
-    >
-      <HambergerMenu size={14} className="stroke-gray-400 dark:stroke-gray-500"  />
-    </div>
-  ) : (
-    // در حالت نمایش: شماره ردیف
-    (currentPage - 1) * pageSize + rowIndex + 1
-  )}
-</td>
-{selection && (
-          <td
-            className="px-3 sticky left-0 z-20"
-            style={{ backgroundColor: rowBgColor, top:'40px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => toggleRow(row, rowIndex)}
-              className="rounded border-gray-300 dark:border-gray-600 text-cyan-600 focus:ring-cyan-500"
-              aria-label={`Select row ${rowIndex + 1}`}
-            />
-          </td>
-        )}
+                        <td
+                          className="px-3 sticky left-0 z-10 text-center text-sm"
+                          style={{
+                            backgroundColor: rowBgColor,
+                            left: selection ? "0" : "0",
+                          }}
+                        >
+                          {isEditMode === "edit" ? (
+                            <div
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, rowIndex)}
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={(e) => handleDrop(e, rowIndex)}
+                              className="cursor-grab flex justify-center items-center py-1 active:cursor-grabbing"
+                            >
+                              <HambergerMenu
+                                size={14}
+                                className="stroke-gray-400 dark:stroke-gray-500"
+                              />
+                            </div>
+                          ) : (
+                            // در حالت نمایش: شماره ردیف (بر اساس اندازه صفحه‌ی فعلی)
+                            (currentPage - 1) * internalPageSize + rowIndex + 1
+                          )}
+                        </td>
+                        {selection && (
+                          <td
+                            className="px-3 sticky left-0 z-20"
+                            style={{ backgroundColor: rowBgColor, top: "40px" }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleRow(row, rowIndex)}
+                              className="rounded border-gray-300 dark:border-gray-600 text-cyan-600 focus:ring-cyan-500"
+                              aria-label={`Select row ${rowIndex + 1}`}
+                            />
+                          </td>
+                        )}
 
-
-
-        {/* ستون‌های داده */}
-        {paginatedColumns.map((column) => (
-          <td
-            key={column.key}
-            className="px-3 text-xs text-gray-700 dark:text-gray-300"
-            style={{ textAlign: column.align || 'left' }}
-          >
+                        {/* ستون‌های داده */}
+                        {paginatedColumns.map((column) => (
+                          <td
+                            key={column.key}
+                            className="px-3 text-sm text-gray-700 dark:text-gray-300"
+                            style={{ textAlign: column.align || "left" }}
+                          >
                             {inlineEdit.rowIndex === rowIndex &&
                             inlineEdit.columnKey === column.key ? (
                               <InlineEditCell
@@ -1790,13 +1915,13 @@ const renderPagination = () => {
                       </tr>
 
                       {/* Expanded Row Content */}
-                                {isExpanded && logic?.actions?.expand && (
-  <tr>
-    <td
-      colSpan={colSpanCount} 
-      className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700"
-    >
-                            <div className="text-xs text-gray-600 dark:text-gray-400">
+                      {isExpanded && logic?.actions?.expand && (
+                        <tr>
+                          <td
+                            colSpan={colSpanCount}
+                            className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700"
+                          >
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {paginatedColumns.map((col) => (
                                   <div
