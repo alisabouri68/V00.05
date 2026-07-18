@@ -1,15 +1,46 @@
 @tailwind base;
+@layer base {
+  body {
+    @apply bg-neutral;
+  }
+}
+
 @tailwind components;
 @tailwind utilities;
 
+/* -------- تنظیمات عمومی و فونت -------- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+
 body {
-  font-family: poppins;
-  background-color: #ededed;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* جلوگیری از اسکرول اضافی و ثابت نگه‌داشتن ارتفاع */
   overflow: hidden;
   width: 100%;
   height: 100vh;
-  ;
+  height: 100dvh;
+  /* برای دستگاه‌های مدرن که dvh بهتر است */
+
+  /* اسکرول نرم برای لینک‌های داخلی (اگر از anchor link استفاده شود) */
+  scroll-behavior: smooth;
+
+  /* حذف حاشیه‌های پیش‌فرض و تنظیم padding */
+  margin: 0;
+  padding: 0;
+
+  /* برای اینکه محتوای داخلی به‌خوبی مدیریت شود */
+  box-sizing: border-box;
 }
+
+/* برای تمام المان‌ها box-sizing یکسان */
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+/* در صورت نیاز به اسکرول در بخش‌های خاص، می‌توانیم overflow را روی auto بگذاریم */
+/* اما overflow: hidden در body باعث می‌شود اسکرول کل صفحه حذف شود و فقط بخش‌های داخلی اسکرول داشته باشند */
 
 .asc {
   padding: 2px;
@@ -86,7 +117,9 @@ body {
   z-index: 2;
   transition: border-color 0.2s ease;
 } */
-
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 
 .diagram-component {
   width: 100%;
@@ -145,35 +178,34 @@ body {
 }
 
 
-.custom-scrollbar-dark {
+[data-theme="nightwish"] .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #4b5563 #1f2937;
   overflow-y: auto;
 }
 
-.custom-scrollbar-dark::-webkit-scrollbar {
+[data-theme="nightwish"] .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-.custom-scrollbar-dark::-webkit-scrollbar-track {
+[data-theme="nightwish"] .custom-scrollbar::-webkit-scrollbar-track {
   background: #1f2937;
   border-radius: 9999px;
 }
 
-.custom-scrollbar-dark::-webkit-scrollbar-thumb {
+[data-theme="nightwish"] .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #4b5563;
   border-radius: 9999px;
 }
 
-.custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+[data-theme="nightwish"] .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #6b7280;
 }
 
-.custom-scrollbar-dark::-webkit-scrollbar-corner {
+[data-theme="nightwish"] .custom-scrollbar::-webkit-scrollbar-corner {
   background: transparent;
 }
-
 
 
 

@@ -45,17 +45,17 @@ const CustomAccordion: React.FC<AccordionProps> = ({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="mb-2">
+    <div className="mb-2 bg-neutral text-neutral-text">
       {/* Header Section */}
       <div
-        className="flex items-center gap-3 cursor-pointer group py-3"
+        className="flex items-center gap-3 cursor-pointer group py-3 bg-neutral text-neutral-text"
         onClick={() => setIsOpen(!isOpen)}
       >
         {/* Icon with subtle background */}
         <div className="flex-shrink-0">{icon}</div>
 
         {/* Title */}
-        <span className="text-[14px] font-bold text-[#001D3D] whitespace-nowrap">
+        <span className="text-[14px] font-bold text-[#001D3D] whitespace-nowrap bg-neutral text-neutral-text">
           {title}
         </span>
 
@@ -68,7 +68,7 @@ const CustomAccordion: React.FC<AccordionProps> = ({
           transition={{ duration: 0.2 }}
           className="text-[#001D3D]"
         >
-          <ArrowDown2 size="18" color="currentColor" />
+          <ArrowDown2 size="18" color="currentColor " />
         </motion.div>
       </div>
 
@@ -108,9 +108,9 @@ const Info: React.FC = () => {
   const valueStyle = "text-[13px] text-gray-400";
 
   return (
-    <div className="w-full bg-white select-none px-4">
+    <div className="w-full  select-none px-4 bg-neutral text-neutral-text rounded-xl">
       {/* 1. Top Header with Blue Accent */}
-      <div className="relative pl-4 mb-2">
+      <div className="relative pl-4 mb-2 bg-neutral text-neutral-text">
         <div className="absolute left-0 top-0 h-full w-[3px] bg-[#0077B6] rounded-full"></div>
         <h1 className="text-base font-bold">{"Title"}</h1>
       </div>
@@ -146,7 +146,7 @@ const Info: React.FC = () => {
           </div>
           <div className="mt-4">
             <span className={labelStyle}>Description :</span>
-            <p className="text-[12px] text-[#94A3B8] leading-[1.6] mt-1 pr-4 font-light">
+            <p className="text-[12px] text-neutral-text leading-[1.6] mt-1 pr-4 font-light">
               {"unitSpaceDescription"}
             </p>
           </div>

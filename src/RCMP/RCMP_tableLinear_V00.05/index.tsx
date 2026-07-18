@@ -25,20 +25,17 @@ import {
   ArrowRight2,
   ArrowUp2,
   CloseCircle,
-  DocumentDownload,
   Edit,
   ElementEqual,
   FilterSearch,
   MoreSquare,
-  Refresh,
   Send,
   Setting2,
   Sort,
   Trash,
-  TickCircle,
   Sun,
   Moon,
-  HambergerMenu
+  HambergerMenu,
 } from "iconsax-react";
 import React, {
   useState,
@@ -56,62 +53,12 @@ import { createPortal } from "react-dom";
  **************************************/
 import Button from "RCMP/RCMP_button_V00.05";
 import ModalBase from "../RCMP_modal_V00.05";
+import DropdownLarge from "RCMP/RCMP_dropdown_V00.05";
+import { Label } from "flowbite-react";
 
 /**************************************
  * Step 04 - define properties - Static
  **************************************/
-
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
-
-/**
- * Deep clone helper for immutable updates
- */
-const deepClone = <T,>(obj: T): T => JSON.parse(JSON.stringify(obj));
-
-/**
- * CSV Export utility
- */
-const exportToCSV = (
-  data: any[],
-  columns: IColumn[],
-  filename: string = "export",
-) => {
-  const headers = columns
-    .filter((c) => !c.hidden)
-    .map((c) => c.title)
-    .join(",");
-  const rows = data
-    .map((row) =>
-      columns
-        .filter((c) => !c.hidden)
-        .map((c) => {
-          const val = row[c.key];
-          if (
-            typeof val === "string" &&
-            (val.includes(",") || val.includes('"'))
-          ) {
-            return `"${val.replace(/"/g, '""')}"`;
-          }
-          return val ?? "";
-        })
-        .join(","),
-    )
-    .join("\n");
-
-  const csvContent = `\uFEFF${headers}\n${rows}`;
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `${filename}_${new Date().toISOString().split("T")[0]}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
-};
-
-// ============================================
-// INTERFACES
-// ============================================
 
 interface IMetaProps {
   id?: string;
@@ -164,6 +111,7 @@ interface ITableEvents {
   onBulkDelete?: (rows: any[]) => void;
   onExport?: (data: any[]) => void;
   onAdd?: () => void;
+  onRowsPerPageChange?: (newSize: number) => void;
 }
 
 interface IActionProps {
@@ -215,7 +163,12 @@ interface IModalConfig {
     size?: "xs" | "sm" | "md" | "lg" | "xl" | "full";
     confirmText?: string;
     cancelText?: string;
-    confirmButtonVariant?: "primary" | "secondary" | "danger" | "success" | "warning";
+    confirmButtonVariant?:
+      | "primary"
+      | "secondary"
+      | "danger"
+      | "success"
+      | "warning";
   };
 }
 
@@ -312,72 +265,19 @@ const EmptyState = memo(({ text = "No data found." }: { text?: string }) => (
     <tr>
       <td colSpan={100} className="py-16 text-center">
         <div className="flex flex-col items-center gap-3">
-          <ElementEqual size={48} className="stroke-gray-300 dark:stroke-gray-600" />
-          <p className="text-sm text-gray-400 dark:text-gray-500 font-medium">{text}</p>
+          <ElementEqual
+            size={48}
+            className="stroke-gray-300 dark:stroke-gray-600"
+          />
+          <p className="text-sm text-gray-400 dark:text-gray-500 font-medium">
+            {text}
+          </p>
         </div>
       </td>
     </tr>
   </tbody>
 ));
 EmptyState.displayName = "EmptyState";
-
-/**
- * Column Filter Input
- */
-const ColumnFilter = memo(
-  ({
-    column,
-    value,
-    onChange,
-  }: {
-    column: IColumn;
-    value: string;
-    onChange: (val: string) => void;
-  }) => {
-    const inputRef = useRef<HTMLInputElement>(null);
-
-    if (column.filterRender) {
-      return column.filterRender(value, onChange);
-    }
-
-    return (
-      <div className="relative mt-1">
-        <input
-          ref={inputRef}
-          type="text"
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={`Filter ${column.title}...`}
-          className="w-full h-7 rounded border border-gray-200 dark:border-gray-600 px-2 text-xs 
-                   focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500
-                   bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
-                   text-gray-700 dark:text-gray-200
-                   placeholder:text-gray-400 dark:placeholder:text-gray-500"
-          onClick={(e) => e.stopPropagation()}
-        />
-        {value && (
-          <Button
-            logic={{
-              onClick: (e) => {
-                e.stopPropagation();
-                onChange("");
-              },
-              icon: <CloseCircle size={14} color="#9ca3af" />,
-            }}
-            style={{
-              position: "absolute",
-              right: "0.25rem",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "#9ca3af",
-            }}
-          />
-        )}
-      </div>
-    );
-  },
-);
-ColumnFilter.displayName = "ColumnFilter";
 
 /**
  * Inline Edit Cell
@@ -416,8 +316,7 @@ const InlineEditCell = memo(
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={() => onSave(editValue)}
-          className="h-7 w-full rounded border border-cyan-500 px-2 text-xs 
-                   focus:outline-none focus:ring-2 focus:ring-cyan-200
+          className="h-7 w-full rounded px-2 text-sm border-none
                    bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
         />
       </div>
@@ -425,6 +324,83 @@ const InlineEditCell = memo(
   },
 );
 InlineEditCell.displayName = "InlineEditCell";
+
+// **
+//  * Column Filter Component
+//  */
+const ColumnFilter = memo(
+  ({
+    column,
+    value,
+    onChange,
+  }: {
+    column: IColumn;
+    value: string;
+    onChange: (val: string) => void;
+  }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+      if (isOpen) {
+        inputRef.current?.focus();
+      }
+    }, [isOpen]);
+
+    if (!column.filterable) return null;
+
+    return (
+      <div className="relative inline-block">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
+          className="ml-1 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          aria-label={`Filter ${column.title}`}
+        >
+          <FilterSearch
+            size={12}
+            className="stroke-gray-400 dark:stroke-gray-500"
+          />
+        </button>
+        {isOpen && (
+          <div
+            className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 z-20 min-w-[180px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {column.filterRender ? (
+              column.filterRender(value, onChange)
+            ) : (
+              <input
+                ref={inputRef}
+                type="text"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={`Filter ${column.title}`}
+                className="w-full h-7 rounded border border-gray-200 dark:border-gray-600 px-2 text-sm
+                         bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200
+                         focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              />
+            )}
+            <div className="flex justify-end mt-1">
+              <button
+                onClick={() => {
+                  onChange("");
+                  setIsOpen(false);
+                }}
+                className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  },
+);
+ColumnFilter.displayName = "ColumnFilter";
 
 // ============================================
 // MAIN COMPONENT
@@ -450,19 +426,16 @@ const TableLinear = memo(function TableLinear({
     agreeBar = true,
     loading = false,
     emptyText = "No data found.",
-    enableVirtualization = false,
-    virtualItemHeight = 40,
     enableColumnResize = false,
-    enableExport = false,
     rowKey = "id",
     summaryData,
-    enableDarkMode = true,
     defaultDarkMode = false,
     modalConfig = {},
     enableAddModal = true,
     enableEditModal = true,
     enableDeleteModal = true,
     addButtonText = "ADD",
+    onRowsPerPageChange,
     onAdd,
     onAddSubmit,
     onEdit,
@@ -476,11 +449,9 @@ const TableLinear = memo(function TableLinear({
     onFilter,
     onRowClick,
     onBulkDelete,
-    onExport,
+    onReorder,
   } = logic || {};
-// بعد از destruct کردن logic
-console.log('📦 logic.data:', logic?.data);
-console.log('📦 data from props (raw):', data);
+
   const {
     headerBg = "#d9e7ff",
     rowHoverBg = "#f0f7ff",
@@ -509,6 +480,7 @@ console.log('📦 data from props (raw):', data);
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
     new Set(columns.map((c) => c.key)),
   );
+  const [internalPageSize, setInternalPageSize] = useState(pageSize);
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
@@ -527,40 +499,92 @@ console.log('📦 data from props (raw):', data);
   const [addFormData, setAddFormData] = useState<any>({});
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
-  const componentId = useId();
   const settingButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
     left: number;
   } | null>(null);
-  // بعد از stateهای موجود
-  const [reorderableData, setReorderableData] = useState<any[]>(data);  
-  // نگهداری اندیس ردیف مبدأ برای جابه‌جایی
-const [dragSourceIndex, setDragSourceIndex] = useState<number | null>(null);
+  const [reorderableData, setReorderableData] = useState<any[]>(data);
+  const [dragSourceIndex, setDragSourceIndex] = useState<number | null>(null);
 
-const handleDragStart = (e: React.DragEvent, index: number) => {
-  setDragSourceIndex(index);
-  e.dataTransfer.effectAllowed = 'move';
-  // (اختیاری) برای بهبود UX، می‌توانید یک استایل به عنصر بدهید
-};
+  // Keep visible-columns state in sync when the `columns` prop changes
+  // (e.g. columns added/removed dynamically) instead of only at mount,
+  // where the initial useState(new Set(...)) would otherwise never see
+  // newly-added column keys.
+  useEffect(() => {
+    setVisibleColumns((prev) => {
+      const columnKeys = columns.map((c) => c.key);
+      const prevKeys = new Set(prev);
+      const merged = new Set(prev);
+      let changed = false;
 
-const handleDrop = (e: React.DragEvent, targetIndex: number) => {
-  e.preventDefault();
-  const sourceIndex = dragSourceIndex;
-  if (sourceIndex === null || sourceIndex === targetIndex) return;
+      // Newly-added columns become visible by default.
+      columnKeys.forEach((k) => {
+        if (!prevKeys.has(k)) {
+          merged.add(k);
+          changed = true;
+        }
+      });
+      // Columns that no longer exist are dropped from the visible set.
+      prev.forEach((k) => {
+        if (!columnKeys.includes(k)) {
+          merged.delete(k);
+          changed = true;
+        }
+      });
 
-  // ایجاد کپی جدید از داده‌ها و جابه‌جایی ردیف‌ها
-  const newData = [...reorderableData];
-  const [movedRow] = newData.splice(sourceIndex, 1);
-  newData.splice(targetIndex, 0, movedRow);
-  
-  setReorderableData(newData);
-  setDragSourceIndex(null);
+      return changed ? merged : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columns.map((c) => c.key).join(",")]);
 
-  // (اختیاری) اگر والد نیاز به اطلاع از تغییر ترتیب دارد، یک callback تعریف کنید.
-  // مثلاً logic?.onReorder?.(newData);
-};
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, paginatedRowIndex: number) => {
+      // Resolve the index within the *full* reorderable dataset, since
+      // paginatedData may be filtered/sorted/paginated relative to it.
+      const row = paginatedData[paginatedRowIndex];
+      const sourceKey = getRowKey(row, paginatedRowIndex);
+      const sourceIndex = reorderableData.findIndex(
+        (r, i) => getRowKey(r, i) === sourceKey,
+      );
+      setDragSourceIndex(sourceIndex);
+      e.dataTransfer.effectAllowed = "move";
+    },
+    // paginatedData/getRowKey/reorderableData are defined below via useMemo/useCallback;
+    // this callback is re-created each render which is fine given its cheap body.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reorderableData],
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent, paginatedTargetIndex: number) => {
+      e.preventDefault();
+      if (dragSourceIndex === null) return;
+
+      const targetRow = paginatedData[paginatedTargetIndex];
+      const targetKey = getRowKey(targetRow, paginatedTargetIndex);
+      const targetIndex = reorderableData.findIndex(
+        (r, i) => getRowKey(r, i) === targetKey,
+      );
+
+      if (targetIndex === -1 || dragSourceIndex === targetIndex) {
+        setDragSourceIndex(null);
+        return;
+      }
+
+      const newData = [...reorderableData];
+      const [movedRow] = newData.splice(dragSourceIndex, 1);
+      newData.splice(targetIndex, 0, movedRow);
+
+      setReorderableData(newData);
+      onReorder?.(newData);
+      setDragSourceIndex(null);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dragSourceIndex, reorderableData, onReorder],
+  );
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -612,31 +636,51 @@ const handleDrop = (e: React.DragEvent, targetIndex: number) => {
     if (sortConfig.length > 0) {
       result.sort((a, b) => {
         for (const sort of sortConfig) {
-          const aVal = a[sort.key];
-          const bVal = b[sort.key];
+          const column = columns.find((c) => c.key === sort.key);
+          let aVal = a[sort.key];
+          let bVal = b[sort.key];
 
           if (aVal === bVal) continue;
           if (aVal == null) return sort.direction === "asc" ? -1 : 1;
           if (bVal == null) return sort.direction === "asc" ? 1 : -1;
 
-          const comparison = aVal < bVal ? -1 : 1;
-          return sort.direction === "asc" ? comparison : -comparison;
+          // Type-aware comparison based on the column's declared dataType,
+          // so numbers/dates stored as strings sort correctly instead of
+          // falling back to lexicographic string comparison.
+          let comparison: number;
+          if (column?.dataType === "number") {
+            const aNum = Number(aVal);
+            const bNum = Number(bVal);
+            comparison = aNum < bNum ? -1 : aNum > bNum ? 1 : 0;
+          } else if (column?.dataType === "date") {
+            const aTime = new Date(aVal).getTime();
+            const bTime = new Date(bVal).getTime();
+            comparison = aTime < bTime ? -1 : aTime > bTime ? 1 : 0;
+          } else if (column?.dataType === "boolean") {
+            comparison = aVal === bVal ? 0 : aVal ? 1 : -1;
+          } else {
+            comparison = String(aVal).localeCompare(String(bVal));
+          }
+
+          if (comparison !== 0) {
+            return sort.direction === "asc" ? comparison : -comparison;
+          }
         }
         return 0;
       });
     }
 
     return result;
- }, [reorderableData, filters, search, sortConfig, columns]);
+  }, [reorderableData, filters, search, sortConfig, columns]);
   const paginatedData = useMemo(() => {
     if (!pagination) return processedData;
-    const start = (currentPage - 1) * pageSize;
-    return processedData.slice(start, start + pageSize);
-  }, [processedData, pagination, currentPage, pageSize]);
+    const start = (currentPage - 1) * internalPageSize;
+    return processedData.slice(start, start + internalPageSize);
+  }, [processedData, pagination, currentPage, internalPageSize]);
 
   const totalPages = useMemo(
-    () => (pagination ? Math.ceil(processedData.length / pageSize) : 1),
-    [processedData.length, pagination, pageSize],
+    () => (pagination ? Math.ceil(processedData.length / internalPageSize) : 1),
+    [processedData.length, pagination, internalPageSize],
   );
 
   const displayColumns = useMemo(
@@ -652,11 +696,12 @@ const handleDrop = (e: React.DragEvent, targetIndex: number) => {
   }, [displayColumns, visibleColumnStart, visibleColumnCount]);
 
   const canScrollLeft = visibleColumnStart > 0;
-  const canScrollRight = visibleColumnStart + visibleColumnCount < displayColumns.length;
+  const canScrollRight =
+    visibleColumnStart + visibleColumnCount < displayColumns.length;
 
-const leftHidden = visibleColumnStart;
-const rightHidden = displayColumns.length - (visibleColumnStart + visibleColumnCount);
-
+  const leftHidden = visibleColumnStart;
+  const rightHidden =
+    displayColumns.length - (visibleColumnStart + visibleColumnCount);
 
   const allSelected = useMemo(
     () =>
@@ -750,12 +795,15 @@ const rightHidden = displayColumns.length - (visibleColumnStart + visibleColumnC
     setAddModalOpen(false);
   }, [addFormData, onAddSubmit]);
 
-  const handleEditClick = useCallback((row: any) => {
-    setSelectedRowForAction(row);
-    setEditFormData({ ...row });
-    setEditModalOpen(true);
-    onEdit?.(row);
-  }, [onEdit]);
+  const handleEditClick = useCallback(
+    (row: any) => {
+      setSelectedRowForAction(row);
+      setEditFormData({ ...row });
+      setEditModalOpen(true);
+      onEdit?.(row);
+    },
+    [onEdit],
+  );
 
   const handleEditConfirm = useCallback(() => {
     onEditSubmit?.(editFormData);
@@ -763,11 +811,14 @@ const rightHidden = displayColumns.length - (visibleColumnStart + visibleColumnC
     setSelectedRowForAction(null);
   }, [editFormData, onEditSubmit]);
 
-  const handleDeleteClick = useCallback((row: any) => {
-    setSelectedRowForAction(row);
-    setDeleteModalOpen(true);
-    onDelete?.(row);
-  }, [onDelete]);
+  const handleDeleteClick = useCallback(
+    (row: any) => {
+      setSelectedRowForAction(row);
+      setDeleteModalOpen(true);
+      onDelete?.(row);
+    },
+    [onDelete],
+  );
 
   const handleDeleteConfirm = useCallback(() => {
     if (selectedRowForAction) {
@@ -777,16 +828,20 @@ const rightHidden = displayColumns.length - (visibleColumnStart + visibleColumnC
     setSelectedRowForAction(null);
   }, [selectedRowForAction, onDeleteConfirm]);
 
+  // Bulk delete now opens the shared delete confirmation modal instead of
+  // the native window.confirm(), keeping the interaction consistent with
+  // the rest of the CRUD flows.
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+
   const handleBulkDelete = useCallback(() => {
     if (selectedRowsData.length === 0) return;
-    if (
-      window.confirm(
-        `Are you sure you want to delete ${selectedRowsData.length} selected rows?`,
-      )
-    ) {
-      onBulkDelete?.(selectedRowsData);
-      setSelectedRows(new Set());
-    }
+    setBulkDeleteModalOpen(true);
+  }, [selectedRowsData]);
+
+  const handleBulkDeleteConfirm = useCallback(() => {
+    onBulkDelete?.(selectedRowsData);
+    setSelectedRows(new Set());
+    setBulkDeleteModalOpen(false);
   }, [selectedRowsData, onBulkDelete]);
 
   const handleSearch = useCallback(
@@ -841,22 +896,6 @@ const rightHidden = displayColumns.length - (visibleColumnStart + visibleColumnC
   const cancelInlineEdit = useCallback(() => {
     setInlineEdit({ rowIndex: null, columnKey: null, value: null });
   }, []);
-
-  const handleExport = useCallback(() => {
-    const exportData =
-      selectedRowsData.length > 0 ? selectedRowsData : processedData;
-    if (enableExport) {
-      exportToCSV(exportData, displayColumns, title);
-    }
-    onExport?.(exportData);
-  }, [
-    selectedRowsData,
-    processedData,
-    displayColumns,
-    title,
-    enableExport,
-    onExport,
-  ]);
 
   const handlePageChange = useCallback(
     (page: number) => {
@@ -928,122 +967,142 @@ const rightHidden = displayColumns.length - (visibleColumnStart + visibleColumnC
   }, [resizingColumn, startX, startWidth]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        if (e.key === "a") {
-          e.preventDefault();
-          toggleAll();
-        }
-        if (e.key === "e" && enableExport) {
-          e.preventDefault();
-          handleExport();
-        }
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [toggleAll, handleExport, enableExport]);
-
-  useEffect(() => {
     setCurrentPage(1);
   }, [data.length]);
 
   useEffect(() => {
     setVisibleColumnStart(0);
   }, [columns.length]);
-useEffect(() => {
-  setReorderableData(data || []);
-}, [data]);
+  useEffect(() => {
+    setReorderableData(data || []);
+  }, [data]);
+  useEffect(() => {
+    setInternalPageSize(pageSize);
+  }, [pageSize]);
   // --- RENDER HELPERS ---
 
   const renderSortIcon = (columnKey: string) => {
     const direction = getSortDirection(columnKey);
-    if (!direction) return <Sort size={14} className="stroke-gray-300 dark:stroke-gray-500" />;
+    if (!direction)
+      return (
+        <Sort size={14} className="stroke-gray-700 dark:stroke-gray-500" />
+      );
     if (direction === "asc") return <ArrowUp2 size={14} color="#4b5563" />;
     return <ArrowDown2 size={14} color="#4b5563" />;
   };
 
-  const renderPagination = () => {
-    if (!pagination || totalPages <= 1) return null;
+// ============================================
+// داخل کامپوننت اصلی (مثلاً TableLinear)
+// ============================================
 
-    const pages: (number | string)[] = [];
-    const maxVisible = 5;
+// تعریف state برای تعداد ردیف در هر صفحه
+const [rowsPerPage, setRowsPerPage] = useState<number>(10);
 
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
+// تابع renderPagination اصلاح شده
+const renderPagination = () => {
+  if (!pagination || totalPages <= 1) return null;
+
+  const rowsPerPageValue = rowsPerPage; // مقدار جاری
+  const totalItems = processedData.length;
+  const start = (currentPage - 1) * rowsPerPageValue + 1;
+  const end = Math.min(currentPage * rowsPerPageValue, totalItems);
+
+  // محاسبه صفحات نمایش داده شده (همان منطق قبلی)
+  const pages: (number | string)[] = [];
+  const maxVisible = 5;
+  if (totalPages <= maxVisible) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    if (currentPage <= 3) {
+      pages.push(1, 2, 3, 4, "...", totalPages);
+    } else if (currentPage >= totalPages - 2) {
+      pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
     } else {
-      if (currentPage <= 3) {
-        pages.push(1, 2, 3, 4, "...", totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(
-          1,
-          "...",
-          totalPages - 3,
-          totalPages - 2,
-          totalPages - 1,
-          totalPages,
-        );
-      } else {
-        pages.push(
-          1,
-          "...",
-          currentPage - 1,
-          currentPage,
-          currentPage + 1,
-          "...",
-          totalPages,
-        );
-      }
+      pages.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages);
     }
+  }
 
-    return (
-      <footer className="flex items-center justify-end gap-1 px-4 py-3 border-t border-gray-100 dark:border-gray-700">
-        <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-          {processedData.length} Rows | Page {currentPage} of {totalPages}
-        </span>
-
-        <Button
-          logic={{
-            onClick: () => handlePageChange(currentPage - 1),
-            variant: "outline",
-            state: `${currentPage === 1 ? "disabled" : "active"}`,
-            content: "Previous",
-            size: "sm",
-            type:"body"
-          }}
-        />
-        {pages.map((page, idx) => (
-          <button
-            key={idx}
-            onClick={() => typeof page === "number" && handlePageChange(page)}
-            disabled={page === "..."}
-            className={`h-8 min-w-[2rem] px-2 rounded-md text-xs font-medium transition-colors
-              ${
-                page === currentPage
-                  ? "bg-cyan-600 text-white"
-                  : page === "..."
-                    ? "cursor-default text-gray-400 dark:text-gray-500"
-                    : "border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              }`}
-          >
-            {page}
-          </button>
-        ))}
-        <button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="h-8 px-3 rounded-md border border-gray-200 dark:border-gray-600 text-xs font-medium
-                     disabled:opacity-40 disabled:cursor-not-allowed
-                     hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors
-                     text-gray-700 dark:text-gray-300"
-        >
-          Next
-        </button>
-      </footer>
-    );
+  // تابع مدیریت تغییر تعداد ردیف در هر صفحه
+  const handleRowsPerPageChange = (value: any) => {
+    const newSize = Number(value);
+    setRowsPerPage(newSize);          // به‌روزرسانی state
+    setInternalPageSize(newSize);     // اگر داخل کامپوننت دارید
+    onRowsPerPageChange?.(newSize);   // در صورت نیاز به والد
+    handlePageChange(1);              // رفتن به صفحه اول
   };
 
+  return (
+    <footer 
+      className="sticky bottom-0 z-40 flex items-center justify-between gap-2 px-4 py-3 
+                 border-t border-gray-100 dark:border-gray-700
+                 bg-white/80 dark:bg-gray-900/80 
+                 backdrop-blur-md"
+    >
+      {/* بخش چپ: بازه ردیف‌ها */}
+      <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+        {start} – {end} of {totalItems}
+      </span>
+
+      <div className="flex items-center gap-6">
+        {/* بخش وسط: انتخاب تعداد ردیف در هر صفحه */}
+        <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+          <div className="flex items-center gap-1">
+            <span>Rows per page:</span>
+            <DropdownLarge
+              logic={{
+                options: [
+                  { key: 1, label: '10', value: "10" },
+                  { key: 2, label: '20', value: "20" },
+                  { key: 3, label: '50', value: "50" },
+                  { key: 4, label: '100', value: "100" }
+                ],
+                onChange: handleRowsPerPageChange,
+                searchable: false,
+                clearable: false,
+                value: String(rowsPerPage), // مقدار فعلی را به عنوان رشته ارسال می‌کنیم
+              }}
+            />
+          </div>
+        </div>
+
+        {/* بخش راست: دکمه‌های ناوبری صفحه */}
+        <div className="flex items-center gap-3">
+          <Button
+            logic={{
+              onClick: () => handlePageChange(currentPage - 1),
+              variant: "outline",
+              state: currentPage === 1 ? "disabled" : "active",
+              icon: (
+                <ArrowLeft2
+                  size={18}
+                  className="stroke-gray-600 dark:stroke-gray-400"
+                />
+              ),
+              size: "xs",
+            }}
+          />
+          <span>
+            {currentPage} / {totalPages}
+          </span>
+          <Button
+            logic={{
+              onClick: () => handlePageChange(currentPage + 1),
+              variant: "outline",
+              state: currentPage === totalPages ? "disabled" : "active",
+              icon: (
+                <ArrowRight2
+                  size={18}
+                  className="stroke-gray-600 dark:stroke-gray-400"
+                />
+              ),
+              size: "xs",
+            }}
+          />
+        </div>
+      </div>
+    </footer>
+  );
+};
   const renderAgreeBar = () => {
     if (!agreeBar) return null;
 
@@ -1062,9 +1121,9 @@ useEffect(() => {
             key={idx}
             className="flex h-11 flex-1 min-w-[120px] items-center justify-between 
                        rounded-lg bg-white dark:bg-gray-800 px-4 py-2 shadow-sm border border-gray-100 dark:border-gray-700
-                       hover:shadow-md transition-shadow"
+                       hover:shadow-sm transition-shadow"
           >
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+            <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
               {item.label}
             </span>
             <span className="text-sm font-bold text-cyan-700 dark:text-cyan-400">
@@ -1089,7 +1148,9 @@ useEffect(() => {
           isOpen: addModalOpen,
           onOpenChange: setAddModalOpen,
           title: config.title || `Add New ${title}`,
-          description: config.description || `Fill in the details to add a new ${title.toLowerCase()}.`,
+          description:
+            config.description ||
+            `Fill in the details to add a new ${title.toLowerCase()}.`,
           size: config.size || "md",
           confirmText: config.confirmText || "Add",
           cancelText: config.cancelText || "Cancel",
@@ -1098,34 +1159,39 @@ useEffect(() => {
           onCancel: () => setAddModalOpen(false),
           closeOnBackdropClick: true,
           closeOnEscapeKey: true,
-          children:
-          <div className="space-y-4">
-            {columns.filter(c => !c.hidden && c.key !== rowKey).map((column) => (
-              <div key={column.key} className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  {column.title}
-                </label>
-                <input
-                  type={column.dataType === "number" ? "number" : "text"}
-                  value={addFormData[column.key] || ""}
-                  onChange={(e) => setAddFormData((prev:any) => ({ ...prev, [column.key]: e.target.value }))}
-                  placeholder={`Enter ${column.title}`}
-                  className="h-9 rounded-lg border border-gray-200 dark:border-gray-600 px-3 text-sm
+          children: (
+            <div className="space-y-4">
+              {columns
+                .filter((c) => !c.hidden && c.key !== rowKey)
+                .map((column) => (
+                  <div key={column.key} className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {column.title}
+                    </label>
+                    <input
+                      type={column.dataType === "number" ? "number" : "text"}
+                      value={addFormData[column.key] || ""}
+                      onChange={(e) =>
+                        setAddFormData((prev: any) => ({
+                          ...prev,
+                          [column.key]: e.target.value,
+                        }))
+                      }
+                      placeholder={`Enter ${column.title}`}
+                      className="h-9 rounded-lg border border-gray-200 dark:border-gray-600 px-3 text-sm
                            focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100
                            bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200
                            placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                />
-              </div>
-            ))}
-          </div>
-        
+                    />
+                  </div>
+                ))}
+            </div>
+          ),
         }}
         style={{
           compact: true,
         }}
       />
-        
-  
     );
   };
 
@@ -1140,30 +1206,41 @@ useEffect(() => {
           isOpen: editModalOpen,
           onOpenChange: setEditModalOpen,
           title: config.title || `Edit ${title}`,
-          description: config.description || `Update the details for this ${title.toLowerCase()}.`,
+          description:
+            config.description ||
+            `Update the details for this ${title.toLowerCase()}.`,
           size: config.size || "md",
           confirmText: config.confirmText || "Save Changes",
           cancelText: config.cancelText || "Cancel",
           confirmButtonVariant: "primary",
-          children:  <div className="space-y-4">
-            {columns.filter(c => !c.hidden && c.key !== rowKey).map((column) => (
-              <div key={column.key} className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  {column.title}
-                </label>
-                <input
-                  type={column.dataType === "number" ? "number" : "text"}
-                  value={editFormData[column.key] || ""}
-                  onChange={(e) => setEditFormData((prev:any) => ({ ...prev, [column.key]: e.target.value }))}
-                  placeholder={`Enter ${column.title}`}
-                  className="h-9 rounded-lg border border-gray-200 dark:border-gray-600 px-3 text-sm
+          children: (
+            <div className="space-y-4">
+              {columns
+                .filter((c) => !c.hidden && c.key !== rowKey)
+                .map((column) => (
+                  <div key={column.key} className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {column.title}
+                    </label>
+                    <input
+                      type={column.dataType === "number" ? "number" : "text"}
+                      value={editFormData[column.key] || ""}
+                      onChange={(e) =>
+                        setEditFormData((prev: any) => ({
+                          ...prev,
+                          [column.key]: e.target.value,
+                        }))
+                      }
+                      placeholder={`Enter ${column.title}`}
+                      className="h-9 rounded-lg border border-gray-200 dark:border-gray-600 px-3 text-sm
                            focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100
                            bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200
                            placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                />
-              </div>
-            ))}
-          </div>,
+                    />
+                  </div>
+                ))}
+            </div>
+          ),
           onConfirm: handleEditConfirm,
           onCancel: () => {
             setEditModalOpen(false);
@@ -1176,7 +1253,6 @@ useEffect(() => {
           compact: true,
         }}
       />
- 
     );
   };
 
@@ -1191,7 +1267,9 @@ useEffect(() => {
           isOpen: deleteModalOpen,
           onOpenChange: setDeleteModalOpen,
           title: config.title || "Confirm Deletion",
-          description: config.description || `Are you sure you want to delete this ${title.toLowerCase()}? This action cannot be undone.`,
+          description:
+            config.description ||
+            `Are you sure you want to delete this ${title.toLowerCase()}? This action cannot be undone.`,
           variant: "error",
           size: config.size || "sm",
           confirmText: config.confirmText || "Delete",
@@ -1213,20 +1291,48 @@ useEffect(() => {
     );
   };
 
+  // Confirmation modal for bulk delete — replaces the native window.confirm()
+  // so bulk delete matches the same modal-driven UX as single-row delete.
+  const renderBulkDeleteModal = () => {
+    if (!enableDeleteModal) return null;
+
+    return (
+      <ModalBase
+        logic={{
+          isOpen: bulkDeleteModalOpen,
+          onOpenChange: setBulkDeleteModalOpen,
+          title: "Confirm Bulk Deletion",
+          description: `Are you sure you want to delete ${selectedRowsData.length} selected row(s)? This action cannot be undone.`,
+          variant: "error",
+          size: "sm",
+          confirmText: "Delete",
+          cancelText: "Cancel",
+          confirmButtonVariant: "danger",
+          cancelButtonVariant: "ghost",
+          onConfirm: handleBulkDeleteConfirm,
+          onCancel: () => setBulkDeleteModalOpen(false),
+          closeOnBackdropClick: true,
+          closeOnEscapeKey: true,
+        }}
+        style={{
+          compact: true,
+        }}
+      />
+    );
+  };
+
   // --- MAIN RENDER ---
 
-  const themeClass = isDarkMode ? "dark" : "";
 
   return (
     <>
       <section
-        className={`overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-[#f4f7fc] dark:bg-gray-900 shadow-sm ${themeClass}`}
+        className={`overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-[#f4f7fc] dark:bg-gray-900 shadow-sm`}
         style={{
           width: geo?.width,
           height: geo?.height,
           fontSize,
         }}
-        data-theme={isDarkMode ? "dark" : "light"}
       >
         {/* Table Header Toolbar */}
         <header className="flex flex-wrap items-center justify-between gap-3 rounded-t-xl px-4 py-3 bg-[#f4f7fc] dark:bg-gray-900 backdrop-blur-sm">
@@ -1239,59 +1345,45 @@ useEffect(() => {
             <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 border border-gray-200 dark:border-gray-600">
               <button
                 onClick={() => setIsEditMode("view")}
-                className={`flex items-center justify-center gap-1.5 px-4 h-7 rounded-md text-xs font-medium transition-all duration-200
+                className={`flex items-center justify-center gap-1.5 px-4 h-7 rounded-md text-sm font-medium transition-all duration-200
                   ${
                     isEditMode === "view"
                       ? "text-white bg-cyan-600 shadow-sm stroke-white"
                       : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 stroke-gray-600 dark:stroke-gray-400 hover:stroke-gray-800 dark:hover:stroke-gray-200"
                   }`}
               >
-                <MoreSquare size={16}/>
+                <MoreSquare size={16} />
                 View
               </button>
               <button
                 onClick={() => setIsEditMode("edit")}
-                className={`flex items-center justify-center gap-1.5 px-4 h-7 rounded-md text-xs font-medium transition-all duration-200
+                className={`flex items-center justify-center gap-1.5 px-4 h-7 rounded-md text-sm font-medium transition-all duration-200
                   ${
                     isEditMode === "edit"
                       ? "text-white bg-cyan-600 shadow-sm stroke-white"
                       : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 stroke-gray-600 dark:stroke-gray-400 hover:stroke-gray-800 dark:hover:stroke-gray-200"
                   }`}
               >
-                <Edit size={16}  />
+                <Edit size={16} />
                 Edit
               </button>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-
-
-            {/* Dark Mode Toggle */}
-            {enableDarkMode && (
-              <button
-                onClick={toggleDarkMode}
-                className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600
-                           hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {isDarkMode ? (
-                  <Sun size={16} className="text-yellow-500" />
-                ) : (
-                  <Moon size={16} className="text-gray-600" />
-                )}
-              </button>
-            )}
-
             {/* Add Button - Opens Add Modal */}
             {enableAddModal && (
               <button
                 onClick={handleAddClick}
                 className="h-8 px-3 flex items-center gap-1.5 rounded-lg bg-transparent text-[#0891b2] border border-[#0891b2]
-                           text-xs font-bold active:scale-95 transition-all shadow-sm
+                           text-sm font-bold active:scale-95 transition-all shadow-sm
                            dark:text-cyan-400 dark:border-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
               >
-                <AddCircle size={16} variant="Outline" color={isDarkMode ? "#22d3ee" : "#0891b2"} />
+                <AddCircle
+                  size={16}
+                  variant="Outline"
+                  color={isDarkMode ? "#22d3ee" : "#0891b2"}
+                />
                 {addButtonText}
               </button>
             )}
@@ -1319,7 +1411,10 @@ useEffect(() => {
                 className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 title="Column Management"
               >
-                <Setting2 size={16} className="stroke-gray-600 dark:stroke-gray-400" />
+                <Setting2
+                  size={16}
+                  className="stroke-gray-600 dark:stroke-gray-400"
+                />
               </button>
               {showColumnMenu &&
                 menuPosition &&
@@ -1330,11 +1425,11 @@ useEffect(() => {
                     style={{
                       top: menuPosition.top,
                       left: menuPosition.left,
-                      minWidth:80,
+                      minWidth: 80,
                       zIndex: 9999,
                     }}
                   >
-                    <div className="px-3 py-1.5 text-xs font-bold text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 mb-1">
+                    <div className="px-3 py-1.5 text-sm font-bold text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 mb-1">
                       Show columns
                     </div>
                     {columns.map((col) => (
@@ -1348,7 +1443,9 @@ useEffect(() => {
                           onChange={() => toggleColumnVisibility(col.key)}
                           className="rounded border-gray-300 dark:border-gray-600 text-cyan-600 focus:ring-cyan-500"
                         />
-                        <span className="text-xs text-gray-700 dark:text-gray-300">{col.title}</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {col.title}
+                        </span>
                       </label>
                     ))}
                   </div>,
@@ -1366,7 +1463,7 @@ useEffect(() => {
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Search..."
-                className="h-8 w-48 rounded-lg border border-gray-200 dark:border-gray-600 pr-9 pl-3 text-xs
+                className="h-8 w-48 rounded-lg border border-gray-200 dark:border-gray-600 pr-9 pl-3 text-sm
                            focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100
                            bg-white dark:bg-gray-800 transition-all
                            text-gray-700 dark:text-gray-200
@@ -1377,28 +1474,17 @@ useEffect(() => {
                   onClick={() => handleSearch("")}
                   className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                 >
-                  <CloseCircle size={14} className="stroke-gray-500 dark:stroke-gray-400" />
+                  <CloseCircle
+                    size={14}
+                    className="stroke-gray-500 dark:stroke-gray-400"
+                  />
                 </button>
               )}
             </div>
-
-            {/* Export */}
-            {enableExport && (
-              <button
-                onClick={handleExport}
-                className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-600
-                           text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                title="Export CSV"
-              >
-                <DocumentDownload size={14} className="stroke-gray-600 dark:stroke-gray-400" />
-                Export
-              </button>
-            )}
-
             {/* Bulk Actions */}
             {selectedRowsData.length > 0 && (
               <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-1">
-                <span className="text-xs text-red-600 dark:text-red-400 font-medium">
+                <span className="text-sm text-red-600 dark:text-red-400 font-medium">
                   {selectedRowsData.length} Selected
                 </span>
                 <button
@@ -1406,7 +1492,10 @@ useEffect(() => {
                   className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
                   title="Delete selected"
                 >
-                  <Trash size={16} className="stroke-black dark:stroke-gray-300" />
+                  <Trash
+                    size={16}
+                    className="stroke-black dark:stroke-gray-300"
+                  />
                 </button>
                 <button
                   onClick={() => {
@@ -1416,7 +1505,10 @@ useEffect(() => {
                   className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   title="Cancel selection"
                 >
-                  <CloseCircle size={16} className="stroke-black dark:stroke-gray-300" />
+                  <CloseCircle
+                    size={16}
+                    className="stroke-black dark:stroke-gray-300"
+                  />
                 </button>
               </div>
             )}
@@ -1434,49 +1526,57 @@ useEffect(() => {
         >
           <table className="w-full border-collapse ">
             {/* Table Head - Sticky */}
-<thead className="sticky top-0" style={{ zIndex: 10 }}>
-  <tr className="h-10 text-left text-xs" style={{ backgroundColor: headerBg }}>
-    {/* ===== سلول کنترل چپ (جایگزین #/همبرگر) ===== */}
-    <th
-      className="px-1 w-12 sticky left-0 z-30 text-center"
-      style={{ backgroundColor: headerBg, left: 0 }}
-    >
-      <div className="flex items-center justify-center gap-0.5">
-        <button
-          onClick={handleScrollColumnsLeft}
-          disabled={!canScrollLeft}
-          className="h-6 w-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 transition-colors"
-          title="ستون‌های قبلی"
-        >
-          <ArrowLeft2 size={14} className="stroke-gray-600 dark:stroke-gray-400" />
-        </button>
-        {leftHidden > 0 && (
-          <span className="text-[10px] bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-1.5 rounded-full font-medium">
-            {leftHidden}
-          </span>
-        )}
-      </div>
-    </th>
+            <thead className="sticky top-0" style={{ zIndex: 30 }}>
+              <tr
+                className="h-10 text-left text-sm"
+                style={{ backgroundColor: headerBg }}
+              >
+                {/* ===== سلول کنترل چپ (جایگزین #/همبرگر) ===== */}
+                <th
+                  className="px-1 w-12 sticky left-0 z-30 text-center"
+                  style={{ backgroundColor: headerBg, left: 0 }}
+                >
+                  <div className="flex items-center justify-center gap-0.5">
+                    <button
+                      onClick={handleScrollColumnsLeft}
+                      disabled={!canScrollLeft}
+                      className="relative h-6 w-6 flex items-center justify-center rounded-md border-2 border-gray-500 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      title="prev"
+                    >
+                      <ArrowLeft2
+                        size={16}
+                        className="stroke-gray-600 dark:stroke-gray-400"
+                      />
+                      {leftHidden > 0 && (
+                        <span className="absolute -left-2.5 -bottom-2.5 inline-flex items-center justify-center text-center w-5 h-5 px-0.5 text-[14px] font-light text-white bg-cyan-500 dark:bg-cyan-400 rounded-full">
+                          {leftHidden}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </th>
 
-    {/* ===== ستون انتخاب (checkbox) ===== */}
-    {selection && (
-      <th
-        className="px-3 w-10 sticky left-0 z-20"
-        style={{ backgroundColor: headerBg, left: '48px' }} // بعد از سلول کنترل چپ
-      >
-        <input
-          type="checkbox"
-          checked={allSelected}
-          onChange={toggleAll}
-          className="rounded border-gray-300 dark:border-gray-600 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
-          aria-label="Select all"
-        />
-      </th>
-    )}
+                {/* ===== ستون انتخاب (checkbox) ===== */}
+                {selection && (
+                  <th
+                    className="px-3 w-10 sticky left-0 z-20"
+                    style={{ backgroundColor: headerBg, left: "48px" }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                      className="rounded border-gray-300 dark:border-gray-600 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                      aria-label="Select all"
+                    />
+                  </th>
+                )}
 
-    {/* ===== ستون‌های داده (قابل پیمایش) ===== */}
-    {paginatedColumns.map((column) => (
-      <th key={column.key} className="px-3 relative group select-none"
+                {/* ===== ستون‌های داده (قابل پیمایش) ===== */}
+                {paginatedColumns.map((column) => (
+                  <th
+                    key={column.key}
+                    className="px-3 relative group select-none"
                     style={{
                       width: columnWidths[column.key] || column.width,
                       minWidth: column.minWidth || 80,
@@ -1524,39 +1624,41 @@ useEffect(() => {
                         }
                       />
                     )}
-      </th>
-    ))}
-    {/* ===== ستون اکشن (ثابت در راست) ===== */}
-    <th
-  className="px-3 sticky right-0 z-20 "
-  style={{ backgroundColor: headerBg, }}
->
-  <div className="flex items-center justify-between gap-2">
-  
-      <Setting2 size={24} className="stroke-gray-600 dark:stroke-gray-400" />
-    
-    {/* بخش Next + بج */}
-    <div className="flex items-center gap-1">
-      {rightHidden > 0 && (
-        <span className="inline-flex items-center justify-center min-w-[18px] h-5 px-1.5 text-[10px] font-semibold text-white bg-cyan-500 dark:bg-cyan-400 rounded-full">
-          {rightHidden}
-        </span>
-      )}
-      <button
-        onClick={handleScrollColumnsRight}
-        disabled={!canScrollRight}
-        className="h-6 w-6 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        title="ستون‌های بعدی"
-      >
-        <ArrowRight2 size={14} className="stroke-gray-600 dark:stroke-gray-400" />
-      </button>
-    </div>
-  </div>
-</th>
+                  </th>
+                ))}
+                {/* ===== ستون اکشن (ثابت در راست) ===== */}
+                <th
+                  className="px-3 sticky right-0 z-20 "
+                  style={{ backgroundColor: headerBg }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <Setting2
+                      size={24}
+                      className="stroke-gray-600 dark:stroke-gray-400"
+                    />
 
-
-  </tr>
-</thead>
+                    <div className=" flex items-center gap-1">
+                      <button
+                        onClick={handleScrollColumnsRight}
+                        disabled={!canScrollRight}
+                        className="relative h-6 w-6 flex items-center justify-center rounded-md border-2 border-gray-500 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        title="next"
+                      >
+                        <ArrowRight2
+                          size={16}
+                          className="stroke-gray-600 dark:stroke-gray-400"
+                        />
+                        {rightHidden > 0 && (
+                          <span className="absolute -right-2.5 -bottom-2.5 inline-flex items-center justify-center text-center w-5 h-5 px-0.5 text-[14px] font-light text-white bg-cyan-500 dark:bg-cyan-400 rounded-full">
+                            {rightHidden}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </th>
+              </tr>
+            </thead>
 
             {/* Table Body */}
             {loading ? (
@@ -1569,12 +1671,19 @@ useEffect(() => {
                   const key = getRowKey(row, rowIndex);
                   const isSelected = selectedRows.has(key);
                   const isExpanded = expandedRows[key];
-                    const rowBgColor = isSelected
-    ? isDarkMode ? '#164e63' : '#ecfeff'
-    : rowIndex % 2 === 1
-      ? isDarkMode ? '#1f2937' : stripeColor
-      : isDarkMode ? '#111827' : 'white';
-      const colSpanCount = paginatedColumns.length + (selection ? 1 : 0) + 3;
+                  const rowBgColor = isSelected
+                    ? isDarkMode
+                      ? "#164e63"
+                      : "#ecfeff"
+                    : rowIndex % 2 === 1
+                      ? isDarkMode
+                        ? "#1f2937"
+                        : stripeColor
+                      : isDarkMode
+                        ? "#111827"
+                        : "white";
+                  const colSpanCount =
+                    paginatedColumns.length + (selection ? 1 : 0) + 3;
 
                   return (
                     <React.Fragment key={key}>
@@ -1590,10 +1699,16 @@ useEffect(() => {
                         `}
                         style={{
                           backgroundColor: isSelected
-                            ? isDarkMode ? "#164e63" : "#ecfeff"
+                            ? isDarkMode
+                              ? "#164e63"
+                              : "#ecfeff"
                             : rowIndex % 2 === 1
-                              ? isDarkMode ? "#1f2937" : stripeColor
-                              : isDarkMode ? "#111827" : "white",
+                              ? isDarkMode
+                                ? "#1f2937"
+                                : stripeColor
+                              : isDarkMode
+                                ? "#111827"
+                                : "white",
                         }}
                         onClick={() => onRowClick?.(row, rowIndex)}
                         onDoubleClick={() => {
@@ -1620,53 +1735,54 @@ useEffect(() => {
                         role="row"
                         aria-selected={isSelected}
                       >
-                             <td
-  className="px-3 sticky left-0 z-15 text-center text-xs"
-  style={{
-    backgroundColor: rowBgColor,
-    left: selection ? '0' : '0',
-  }}
->
-  {isEditMode === 'edit' ? (
-    <div
-      draggable
-      onDragStart={(e) => handleDragStart(e, rowIndex)}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => handleDrop(e, rowIndex)}
-      className="cursor-grab flex justify-center items-center py-1 active:cursor-grabbing"
-    >
-      <HambergerMenu size={14} className="stroke-gray-400 dark:stroke-gray-500"  />
-    </div>
-  ) : (
-    // در حالت نمایش: شماره ردیف
-    (currentPage - 1) * pageSize + rowIndex + 1
-  )}
-</td>
-{selection && (
-          <td
-            className="px-3 sticky left-0 z-20"
-            style={{ backgroundColor: rowBgColor, top:'40px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => toggleRow(row, rowIndex)}
-              className="rounded border-gray-300 dark:border-gray-600 text-cyan-600 focus:ring-cyan-500"
-              aria-label={`Select row ${rowIndex + 1}`}
-            />
-          </td>
-        )}
+                        <td
+                          className="px-3 sticky left-0 z-10 text-center text-sm"
+                          style={{
+                            backgroundColor: rowBgColor,
+                            left: selection ? "0" : "0",
+                          }}
+                        >
+                          {isEditMode === "edit" ? (
+                            <div
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, rowIndex)}
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={(e) => handleDrop(e, rowIndex)}
+                              className="cursor-grab flex justify-center items-center py-1 active:cursor-grabbing"
+                            >
+                              <HambergerMenu
+                                size={14}
+                                className="stroke-gray-400 dark:stroke-gray-500"
+                              />
+                            </div>
+                          ) : (
+                            // در حالت نمایش: شماره ردیف (بر اساس اندازه صفحه‌ی فعلی)
+                            (currentPage - 1) * internalPageSize + rowIndex + 1
+                          )}
+                        </td>
+                        {selection && (
+                          <td
+                            className="px-3 sticky left-0 z-20"
+                            style={{ backgroundColor: rowBgColor, top: "40px" }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleRow(row, rowIndex)}
+                              className="rounded border-gray-300 dark:border-gray-600 text-cyan-600 focus:ring-cyan-500"
+                              aria-label={`Select row ${rowIndex + 1}`}
+                            />
+                          </td>
+                        )}
 
-
-
-        {/* ستون‌های داده */}
-        {paginatedColumns.map((column) => (
-          <td
-            key={column.key}
-            className="px-3 text-xs text-gray-700 dark:text-gray-300"
-            style={{ textAlign: column.align || 'left' }}
-          >
+                        {/* ستون‌های داده */}
+                        {paginatedColumns.map((column) => (
+                          <td
+                            key={column.key}
+                            className="px-3 text-sm text-gray-700 dark:text-gray-300"
+                            style={{ textAlign: column.align || "left" }}
+                          >
                             {inlineEdit.rowIndex === rowIndex &&
                             inlineEdit.columnKey === column.key ? (
                               <InlineEditCell
@@ -1686,7 +1802,10 @@ useEffect(() => {
                                 }
                                 onDoubleClick={(e) => {
                                   e.stopPropagation();
-                                  if (column.editable && isEditMode === "edit") {
+                                  if (
+                                    column.editable &&
+                                    isEditMode === "edit"
+                                  ) {
                                     handleInlineEdit(
                                       rowIndex,
                                       column.key,
@@ -1702,11 +1821,15 @@ useEffect(() => {
                         ))}
 
                         {/* Fixed Action Column */}
-                     <td
-          className="px-3 w-12 sticky z-10"
-          style={{ backgroundColor: rowBgColor , top :'40px', right:0 }}
-          onClick={(e) => e.stopPropagation()}
-        >
+                        <td
+                          className="px-3 w-12 sticky z-10"
+                          style={{
+                            backgroundColor: rowBgColor,
+                            top: "40px",
+                            right: 0,
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <div className="flex items-center justify-between gap-4">
                             {logic?.actions?.expand && (
                               <button
@@ -1716,37 +1839,51 @@ useEffect(() => {
                                 aria-label={isExpanded ? "Collapse" : "Expand"}
                               >
                                 {isExpanded ? (
-                                  <ArrowUp2 size={16} className="stroke-gray-600 dark:stroke-gray-400" />
+                                  <ArrowUp2
+                                    size={16}
+                                    className="stroke-gray-600 dark:stroke-gray-400"
+                                  />
                                 ) : (
-                                  <ArrowDown2 size={16} className="stroke-gray-600 dark:stroke-gray-400" />
+                                  <ArrowDown2
+                                    size={16}
+                                    className="stroke-gray-600 dark:stroke-gray-400"
+                                  />
                                 )}
                               </button>
                             )}
 
                             {isEditMode === "edit" ? (
                               <>
-                                {/* Edit Button - Opens Edit Modal */}
-                                {enableEditModal && (
-                                  <button
-                                    onClick={() => handleEditClick(row)}
-                                    className="flex size-7 items-center justify-center rounded-md 
+                                {/* Edit Button - Opens Edit Modal (gated on actions.edit when provided) */}
+                                {enableEditModal &&
+                                  (logic?.actions?.edit ?? true) && (
+                                    <button
+                                      onClick={() => handleEditClick(row)}
+                                      className="flex size-7 items-center justify-center rounded-md 
                                                hover:bg-cyan-50 dark:hover:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 transition-colors"
-                                    title="Edit"
-                                  >
-                                    <Edit size={20} className="stroke-gray-600 dark:stroke-gray-400" />
-                                  </button>
-                                )}
-                                {/* Delete Button - Opens Delete Modal */}
-                                {enableDeleteModal && (
-                                  <button
-                                    onClick={() => handleDeleteClick(row)}
-                                    className="flex size-7 items-center justify-center rounded-md 
+                                      title="Edit"
+                                    >
+                                      <Edit
+                                        size={20}
+                                        className="stroke-gray-600 dark:stroke-gray-400"
+                                      />
+                                    </button>
+                                  )}
+                                {/* Delete Button - Opens Delete Modal (gated on actions.delete when provided) */}
+                                {enableDeleteModal &&
+                                  (logic?.actions?.delete ?? true) && (
+                                    <button
+                                      onClick={() => handleDeleteClick(row)}
+                                      className="flex size-7 items-center justify-center rounded-md 
                                                hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400 transition-colors"
-                                    title="Delete"
-                                  >
-                                    <Trash size={20} className="stroke-gray-600 dark:stroke-gray-400" />
-                                  </button>
-                                )}
+                                      title="Delete"
+                                    >
+                                      <Trash
+                                        size={20}
+                                        className="stroke-gray-600 dark:stroke-gray-400"
+                                      />
+                                    </button>
+                                  )}
                               </>
                             ) : (
                               <>
@@ -1756,14 +1893,20 @@ useEffect(() => {
                                              hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                   title="Details"
                                 >
-                                  <MoreSquare size={20} className="stroke-gray-600 dark:stroke-gray-400" />
+                                  <MoreSquare
+                                    size={20}
+                                    className="stroke-gray-600 dark:stroke-gray-400"
+                                  />
                                 </button>
                                 <button
                                   className="flex size-7 items-center justify-center rounded-md 
                                              hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                   title="Go to"
                                 >
-                                  <Send size={20} className="stroke-gray-600 dark:stroke-gray-400" />
+                                  <Send
+                                    size={20}
+                                    className="stroke-gray-600 dark:stroke-gray-400"
+                                  />
                                 </button>
                               </>
                             )}
@@ -1772,13 +1915,13 @@ useEffect(() => {
                       </tr>
 
                       {/* Expanded Row Content */}
-                                {isExpanded && logic?.actions?.expand && (
-  <tr>
-    <td
-      colSpan={colSpanCount} 
-      className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700"
-    >
-                            <div className="text-xs text-gray-600 dark:text-gray-400">
+                      {isExpanded && logic?.actions?.expand && (
+                        <tr>
+                          <td
+                            colSpan={colSpanCount}
+                            className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700"
+                          >
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {paginatedColumns.map((col) => (
                                   <div
@@ -1790,7 +1933,11 @@ useEffect(() => {
                                     </span>
                                     <span className="font-medium text-gray-800 dark:text-gray-200">
                                       {col.render
-                                        ? col.render(row[col.key], row, rowIndex)
+                                        ? col.render(
+                                            row[col.key],
+                                            row,
+                                            rowIndex,
+                                          )
                                         : (row[col.key] ?? "-")}
                                     </span>
                                   </div>
@@ -1826,6 +1973,7 @@ useEffect(() => {
       {renderAddModal()}
       {renderEditModal()}
       {renderDeleteModal()}
+      {renderBulkDeleteModal()}
     </>
   );
 });

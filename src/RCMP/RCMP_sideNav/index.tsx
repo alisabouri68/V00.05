@@ -1,96 +1,85 @@
-import React, { useState } from "react";
-// Import Iconsax icons
-import {
-  Element3,
-  Hierarchy,
-  Briefcase,
-  VoiceSquare,
-  Chart2,
-} from "iconsax-react";
-
-import TextIcon from "RCMP/RCMP_iconText";
-import Separator from "RCMP/RCMP_seperator";
-import logoDash from "Asset/images/logo-dash.png";
+import { Element3, Flash} from "iconsax-react";
 import { useParams } from "react-router-dom";
+import logoDash from "Asset/images/Asset 3.svg";
 
 function SideNav() {
   const { bundleName } = useParams();
 
-  // Define menu items for cleaner code
   const menuItems = [
     {
-      id: "Dashboard",
-      label: "Dashboard",
-      icon: Chart2,
+      id: "dashboard",
+      label: "dashboard",
+      icon: Element3,
       active: bundleName === "dashboard",
-      link: `${import.meta.env.VITE_APP_URL}:3000/dashboard/default/history`,
+      link: `/dashboard/default/history`,
     },
     {
-      id: "Medical",
-      label: "Medical",
-      icon: Hierarchy,
+      id: "smart-lab",
+      label: "smart-lab",
+      icon: Flash,
       active: bundleName === "medical",
-      link: `${import.meta.env.VITE_APP_URL}:3000/medical/spk_1/sheet_1`,
+      link: `/medical/spk_1/sheet_1`,
+    },
+    {
+      id: "med-x",
+      label: "Med",
+      icon: Flash,
+      active: bundleName === "med-x",
+      link: `/med-x/spk_1/sheet_1`,
     },
   ];
 
-  // Constant colors based on the image
-  const activeColor = "#219dbc"; // Blue/Teal color from image
-  const inactiveColor = "#292D32"; // Dark gray/black
-
   return (
-    <div className="w-20 bg-white rounded-xl shadow-sm flex flex-col items-center py-4 min-h-full">
-      {/* Logo Section */}
-      <div className="flex flex-col items-center mb-4">
-        <div className="w-12 h-12 flex items-center justify-center">
-          <img src={logoDash} alt="AAD Logo" className="object-contain" />
-        </div>
-        <span className="text-[#409191] font-bold text-lg tracking-widest mt-1">
-          RAAD
-        </span>
+    <aside className="w-16 bg-neutral text-neutral-text rounded-xl flex flex-col items-center py-6 min-h-full select-none shadow-sm shadow-neutral-ring ">
+      {/* Logo */}
+      <div className="flex flex-col items-center gap-1 mb-6">
+        <img src={logoDash} alt="RAAD" className="w-14 h-14 object-contain" />
       </div>
 
-      <Separator
-        logic={{
-          className: "w-10/12 h-[1px] bg-gray-100 mb-8",
-        }}
-      />
+      <div className="w-14 h-0.5 bg-gray-200/70 mb-4" />
 
-      {/* Navigation Items */}
-      <div className="flex flex-col items-center gap-8 w-full">
-        {menuItems.map((item) => {
-          // const isActive = activeItem === item.id;
-          const isActive = item.active;
-          const IconComponent = item.icon;
+      {/* Menu */}
+      <nav className="flex flex-col w-full gap-1">
+        {menuItems.map(({ id, label, icon: Icon, active, link }) => (
+          <a
+            key={id}
+            href={link}
+            className="group relative flex flex-col items-center gap-1.5 py-3 transition-colors duration-300"
+          >
+            {/* Active left border */}
+            <span
+              className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3.5px] rounded-r-full bg-primary transition-all duration-300 ${
+                active
+                  ? "h-9 opacity-100 shadow-[0_0_10px_2px_rgba(33,157,188,0.45)]"
+                  : "h-0 opacity-0 group-hover:h-5 group-hover:opacity-60"
+              }`}
+            />
 
-          return (
-            <a
-              key={item.id}
-              className="cursor-pointer transition-all duration-300 hover:opacity-80"
-              href={item.link}
+            {/* Icon */}
+            <span
+              className="flex items-center justify-center w-11 h-11 rounded-2xl transition-all duration-300 "
             >
-              <TextIcon
-                logic={{
-                  icon: () => (
-                    <IconComponent
-                      size="32"
-                      color={isActive ? activeColor : inactiveColor}
-                      // variant={"Linear"} // Optional: change variant when active
-                    />
-                  ),
-                  text: item.label,
-                  className: `text-sm font-medium flex-col gap-2 ${
-                    isActive ? `text-[${activeColor}]` : "text-gray-800"
-                  }`,
-                  // Dynamic style for text color
-                  style: { color: isActive ? activeColor : inactiveColor },
-                }}
+              <Icon
+                size={30}
+                className={active ? "stroke-primary" : "stroke-neutral-text"}
+                variant={active ? "Bold" : "Linear"}
               />
-            </a>
-          );
-        })}
-      </div>
-    </div>
+            </span>
+
+            {/* Label */}
+            <span
+              className={`text-[10.5px] leading-tight text-center px-1 transition-colors duration-300 ${
+                active
+                  ? "font-bold text-primary"
+                  : "font-medium text-gray-400 group-hover:text-gray-500"
+              }`}
+            >
+              {label}
+            </span>
+          </a>
+        ))}
+      </nav>
+    </aside>
   );
 }
 

@@ -1,4 +1,5 @@
 const flowbiteReact = require("flowbite-react/plugin/tailwindcss");
+ import { rthmThemePlugin } from "./src/THME/config.ts";
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -14,7 +15,8 @@ module.exports = {
     require("flowbite/plugin"),
     require("tailwind-scrollbar"),
     flowbiteReact,
+    rthmThemePlugin
     // custom theme plugin
-    require("./src/THME/index"),
+    // require("./src/THME/config.ts"),
   ],
 };

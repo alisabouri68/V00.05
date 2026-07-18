@@ -7,7 +7,7 @@ function Action({ DynamicComponent }: any) {
   return (
     <Suspense
       fallback={
-        <div className="w-full h-full flex items-center justify-center">
+        <div className="w-full h-full bg-neutral text-neutral-text flex items-center justify-center">
           <Spinner
             logic={{
               ariaLabel: "Loading ...",

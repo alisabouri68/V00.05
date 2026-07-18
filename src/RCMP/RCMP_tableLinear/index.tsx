@@ -156,7 +156,7 @@ function DraggableRow({
         "hover:bg-[#e8f2fa]",
         // Styles when the row is selected/clicked
         {
-          "bg-blue-100/50 shadow-md ring-1 ring-blue-200 z-10": isSelected,
+          "bg-blue-100/50 shadow-sm ring-1 ring-blue-200 z-10": isSelected,
           "shadow-2xl bg-white z-50": isDragging,
         },
         // Allow custom classes from props
