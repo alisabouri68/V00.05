@@ -11,21 +11,21 @@ function SideNav() {
       label: "dashboard",
       icon: Element3,
       active: bundleName === "dashboard",
-      link: `/dashboard/default/history`,
+      link: `https://v00-05.vercel.app//dashboard/default/history`,
     },
     {
       id: "smart-lab",
       label: "smart-lab",
       icon: Flash,
       active: bundleName === "medical",
-      link: `/medical/spk_1/sheet_1`,
+      link: `https://v00-05.vercel.app//medical/spk_1/sheet_1`,
     },
     {
       id: "med-x",
       label: "Med",
       icon: Flash,
       active: bundleName === "med-x",
-      link: `/med-x/spk_1/sheet_1`,
+      link: `https://v00-05.vercel.app//med-x/spk_1/sheet_1`,
     },
   ];
 
