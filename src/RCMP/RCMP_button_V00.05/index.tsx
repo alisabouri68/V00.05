@@ -4,9 +4,11 @@ import TextIcon from '../RCMP_textIcon_v00.05'
 
 // ====================== Types ======================
 
+
 type ButtonVariant = 'fill' | 'secondary' | 'outline' | 'text' | 'default'
 type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' // 32, 40, 48, 56
 type ButtonState = 'normal' | 'hover' | 'active' | 'disabled' | 'loading'
+
 
 interface IButtonLogic {
   to?: string
@@ -161,7 +163,13 @@ function Button ({ meta, geo, logic, style }: IButtonProps) {
       </>
     )
   }
-
+  return (
+    <>
+      {icon && <span className="">{icon}</span>}
+      {content}
+    </>
+  );
+};
   const children = (
     <>
       {renderContent()}
