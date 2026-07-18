@@ -1,5 +1,5 @@
 import { Element3, Flash} from "iconsax-react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import logoDash from "Asset/images/Asset 3.svg";
 
 function SideNav() {
@@ -41,9 +41,9 @@ function SideNav() {
       {/* Menu */}
       <nav className="flex flex-col w-full gap-1">
         {menuItems.map(({ id, label, icon: Icon, active, link }) => (
-          <a
+          <Link
             key={id}
-            href={link}
+            to={link}
             className="group relative flex flex-col items-center gap-1.5 py-3 transition-colors duration-300"
           >
             {/* Active left border */}
@@ -76,7 +76,7 @@ function SideNav() {
             >
               {label}
             </span>
-          </a>
+          </Link>
         ))}
       </nav>
     </aside>
