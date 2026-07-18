@@ -37,7 +37,7 @@ const routes: RouteObject[] = [
         ),
       },
       {
-        path: ":bundleName/:serviceName/:sheetName?/:id?",
+        path: ":bundleName?/:serviceName?/:sheetName?/:id?",
         Component: () => (
           <AuthProvider>
             <ErrorBoundary>
