@@ -11,7 +11,23 @@
 /* -------- تنظیمات عمومی و فونت -------- */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
+:root[data-theme="popcorn"] {
+  --table-header-bg: #d9e7ff;
+  --row-even-bg: #ffffff;
+  --row-odd-bg: #f9fafc;
+  --row-selected-bg: #ecfeff;
+  --border-color: #e2e8f0;
+  --text-color: #1e293b;
+}
 
+:root[data-theme="nightwish"] {
+  --table-header-bg: #0a0f1a;  /* slate-800 */
+  --row-even-bg: #111827;
+  --row-odd-bg: #1f2937;
+  --row-selected-bg: #164e63;
+  --border-color: #374151;
+  --text-color: #e5e7eb;
+}
 body {
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   /* جلوگیری از اسکرول اضافی و ثابت نگه‌داشتن ارتفاع */
@@ -259,4 +275,17 @@ body {
 .custom-scrollbar::-webkit-scrollbar-corner {
   /* گوشه‌ای که اسکرول افقی و عمودی به هم می‌رسند */
   background: transparent;
+}
+
+[data-theme="nightwish"] .tablebg {
+ background-color: #1e293b;
+}
+[data-theme="nightwish"] .table-header-text {
+ color: #1e293b;
+}
+[data-theme="nightwish"] .table-header-bg-dark {
+ background-color: #1a365d;
+}
+[data-theme="popcorn"] .table-header-bg-light {
+ background-color: #d9e7ff;
 }

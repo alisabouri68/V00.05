@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { type ReactNode } from 'react'
 import TextIcon from '../RCMP_textIcon_v00.05'
+import Badge from 'RCMP/RCMP_badge_V00.05'
 
 // ====================== Types ======================
 
@@ -22,6 +23,10 @@ interface IButtonLogic {
   className?: string
   badge?: number | null
   badgePosition?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
+  /** تنظیمات اضافی برای Badge (مانند pulsate، variant و غیره) */
+  badgeProps?: Omit<React.ComponentProps<typeof Badge>['logic'], 'count' | 'size'>
+  /** رنگ Badge (اگر تنظیم شود، بر رنگ پیش‌فرض و badgeProps.color اولویت دارد) */
+  badgeColor?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info' | 'neutral'
 }
 
 interface IButtonProps {
@@ -35,20 +40,36 @@ interface IButtonProps {
 
 const baseClasses =
   'inline-flex items-center justify-center font-medium rounded-md '
-  const badgePositionClasses: Record <'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' , string > = {
+
+const badgePositionClasses: Record<'top-right' | 'top-left' | 'bottom-right' | 'bottom-left', string> = {
   'top-right': '-top-2 -right-2',
   'top-left': '-top-2 -left-2',
   'bottom-right': '-bottom-2 -right-2',
   'bottom-left': '-bottom-2 -left-2'
 }
 
-function getBadgeClasses (
-  position: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' = 'top-right'
-): string {
-  return [
-    'absolute min-w-[20px] h-5 px-1 flex items-center justify-center rounded-full text-xs font-semibold bg-primary text-primary-active-text',
-    badgePositionClasses[position]
-  ].join(' ')
+// تابع کمکی برای تبدیل سایز دکمه به سایز Badge
+function mapButtonSizeToBadgeSize(buttonSize: ButtonSize): 'xs' | 'sm' | 'md' | 'lg' {
+  const map: Record<ButtonSize, 'xs' | 'sm' | 'md' | 'lg'> = {
+    xs: 'xs',
+    sm: 'sm',
+    md: 'md',
+    lg: 'lg',
+    xl: 'lg'
+  }
+  return map[buttonSize] || 'md'
+}
+
+// تابع کمکی برای انتخاب رنگ Badge بر اساس variant دکمه (پیش‌فرض)
+function getBadgeColorFromVariant(variant: ButtonVariant): 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
+  const map: Record<ButtonVariant, 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+    fill: 'primary',
+    secondary: 'info',
+    outline: 'primary',
+    text: 'neutral',
+    default: 'primary'
+  }
+  return map[variant] || 'primary'
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
@@ -59,7 +80,7 @@ const variantClasses: Record<ButtonVariant, string> = {
     'border border-primary-border text-primary-text hover:border-primary-hover-border hover:text-primary-hover-border active:border-primary-active-border active:text-primary-active-text  disabled:border-primary-disabled-border disabled:text-primary-disabled-text',
   text: ' text-primary-text hover:text-primary-hover-text  active:text-primary-active-text  disabled:text-primary-disabled-text',
   default:
-    'border border-neutral-border text-neutral-text active:bg-neutral-active-bg active:text-neutral-active-text active:border-neutral-active-border hover:bg-neutral-active-bg hover:border-neutral-active-border hover:text-neutral-active-text'
+    'border border-neutral-border text-neutral-text stroke-neutral-text active:bg-neutral-active-bg active:text-neutral-active-text active:border-neutral-active-border hover:bg-neutral-active-bg hover:border-neutral-active-border hover:text-neutral-active-text disabled:border-neutral-disabled-border disabled:text-neutral-disabled-text disabled:stroke-neutral-disabled-text disabled:bg-neutral-disabled-bg'
 }
 
 const stateClasses: Record<ButtonState, string> = {
@@ -79,10 +100,6 @@ const sizeClasses: Record<ButtonSize, string> = {
 }
 
 const fullWidthClass = 'w-full'
-
-// badge classes
-const badgeClasses =
-  'absolute -top-2 -right-2 min-w-[20px] h-5 px-1 flex items-center justify-center rounded-full text-xs font-semibold bg-primary text-primary-active-text pointer-events-none'
 
 // ====================== تابع ترکیب کلاس‌ها ======================
 
@@ -104,6 +121,7 @@ function getButtonClasses ({
     .filter(Boolean)
     .join(' ')
 }
+
 // ====================== کامپوننت اصلی ======================
 
 function Button ({ meta, geo, logic, style }: IButtonProps) {
@@ -120,11 +138,36 @@ function Button ({ meta, geo, logic, style }: IButtonProps) {
     onClick,
     className: customClassName,
     badge,
-    badgePosition = 'top-right' // <-- جدید
+    badgePosition = 'top-right',
+    badgeProps = {},
+    badgeColor: customBadgeColor // <-- رنگ سفارشی Badge از بیرون
   } = logic || {}
 
   const isDisabled = state === 'disabled'
   const className = getButtonClasses({ variant, size, state, fullWidth })
+
+  // تعیین سایز Badge بر اساس سایز دکمه
+  const badgeSize = mapButtonSizeToBadgeSize(size)
+
+  // تعیین رنگ نهایی Badge: اولویت با رنگ سفارشی است، در غیر این صورت از variant استخراج می‌شود
+  const finalBadgeColor = customBadgeColor || getBadgeColorFromVariant(variant)
+
+  // ساخت المان Badge
+  const badgeElement =
+    badge !== undefined && badge !== null ? (
+      <div className={`absolute ${badgePositionClasses[badgePosition]} pointer-events-none`}>
+        <Badge
+          logic={{
+            count: badge,
+            size: badgeSize,
+            color: finalBadgeColor, // <-- استفاده از رنگ نهایی
+            shape: 'pill',
+            variant: 'fill',
+            ...badgeProps // props اضافی (می‌توانند color را override کنند)
+          }}
+        />
+      </div>
+    ) : null
 
   const renderContent = () => {
     if (!content && !icon) return null
@@ -173,13 +216,7 @@ function Button ({ meta, geo, logic, style }: IButtonProps) {
     </>
   )
 
-  const badgeElement =
-    badge !== undefined && badge !== null ? (
-      <span className={getBadgeClasses(badgePosition)}>
-        {badge > 99 ? '99+' : badge}
-      </span>
-    ) : null
-
+  // رندر نهایی با استفاده از Link, a یا button
   if (to) {
     return (
       <span className='relative inline-flex'>
@@ -224,4 +261,5 @@ function Button ({ meta, geo, logic, style }: IButtonProps) {
     </span>
   )
 }
+
 export default Button

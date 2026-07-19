@@ -18,6 +18,7 @@ Description:    Highly optimized table with fixed action column,
                 scroll now moves exactly one item using an index
                 derived from real item geometry (no more multi-item
                 jumps).
+                New: hide navigation controls when all items fit.
 ------------------------------------------------------------*/
 
 /**************************************
@@ -68,6 +69,7 @@ function ServicePicker ({ meta, geo, logic, style }: IServicePickerProps) {
   const [hiddenLeftCount, setHiddenLeftCount] = useState(0)
   const [hiddenRightCount, setHiddenRightCount] = useState<number>(0)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [hasOverflow, setHasOverflow] = useState(false) // <-- وضعیت سرریز
 
   const dragState = useRef({
     active: false,
@@ -94,6 +96,9 @@ function ServicePicker ({ meta, geo, logic, style }: IServicePickerProps) {
 
     setCanScrollLeft(scrollLeft > SCROLL_EPSILON_PX)
     setCanScrollRight(scrollLeft < maxScroll - SCROLL_EPSILON_PX)
+
+    // بررسی سرریز شدن محتوا
+    setHasOverflow(scrollWidth > clientWidth + SCROLL_EPSILON_PX)
 
     const containerRect = container.getBoundingClientRect()
     let hiddenLeft = 0
@@ -132,7 +137,7 @@ function ServicePicker ({ meta, geo, logic, style }: IServicePickerProps) {
   }, [updateScrollState, sortedItems.length])
 
   /**************************************
-   * Step 03 - بستن دراپ‌داون (کلیک بیرون + کیبورد)
+   * Step 03 - بستن دراپ‌داون (کلیک بیرون + کیبورد) و بستن در صورت عدم سرریز
    **************************************/
   useEffect(() => {
     if (!menuOpen) return
@@ -157,13 +162,15 @@ function ServicePicker ({ meta, geo, logic, style }: IServicePickerProps) {
     }
   }, [menuOpen])
 
+  // بستن منو در صورتی که سرریز از بین برود (مثلاً در حین رزایز)
+  useEffect(() => {
+    if (!hasOverflow && menuOpen) {
+      setMenuOpen(false)
+    }
+  }, [hasOverflow, menuOpen])
+
   /**************************************
    * Step 04 - اسکرول دقیقاً یک آیتم در هر کلیک
-   *
-   * منطق: موقعیت واقعی (نه offsetLeft، که به‌خاطر positioning
-   * می‌تواند نادرست باشد) هر آیتم را نسبت به کانتینر محاسبه می‌کنیم،
-   * ایندکس آیتم "فعلی" (نزدیک‌ترین به لبه چپ کانتینر) را پیدا می‌کنیم،
-   * و فقط یک آیتم جلوتر/عقب‌تر می‌رویم.
    **************************************/
   const getItemPositions = (
     container: HTMLDivElement,
@@ -172,7 +179,6 @@ function ServicePicker ({ meta, geo, logic, style }: IServicePickerProps) {
     const containerRect = container.getBoundingClientRect()
     return items.map(el => {
       const rect = el.getBoundingClientRect()
-      // موقعیت آیتم در مختصات محتوای اسکرول‌شونده (مستقل از اسکرول فعلی)
       return rect.left - containerRect.left + container.scrollLeft
     })
   }
@@ -187,7 +193,6 @@ function ServicePicker ({ meta, geo, logic, style }: IServicePickerProps) {
     const positions = getItemPositions(container, items)
     const maxScroll = container.scrollWidth - container.clientWidth
 
-    // ایندکس آیتمی که لبه‌ی چپش نزدیک‌ترین (و >=) به scrollLeft فعلی است
     let currentIndex = positions.findIndex(
       pos => pos >= container.scrollLeft - SCROLL_EPSILON_PX
     )
@@ -206,7 +211,7 @@ function ServicePicker ({ meta, geo, logic, style }: IServicePickerProps) {
   }
 
   /**************************************
-   * Step 05 - درگ با Pointer Events (موس + تاچ + قلم)
+   * Step 05 - درگ با Pointer Events
    **************************************/
   const handlePointerDown = (e: React.PointerEvent) => {
     const container = scrollRef.current
@@ -257,7 +262,7 @@ function ServicePicker ({ meta, geo, logic, style }: IServicePickerProps) {
   }, [])
 
   /**************************************
-   * Step 06 - اسکرول با چرخ ماوس (non-passive، یک آیتم به ازای هر رویداد گسسته)
+   * Step 06 - اسکرول با چرخ ماوس
    **************************************/
   useEffect(() => {
     const container = scrollRef.current
@@ -275,7 +280,7 @@ function ServicePicker ({ meta, geo, logic, style }: IServicePickerProps) {
   }, [])
 
   /**************************************
-   * Step 07 - اکشن‌ها (با سرکوب کلیک بعد از درگ)
+   * Step 07 - اکشن‌ها
    **************************************/
   const goTo = (item: any) => {
     if (dragState.current.moved > DRAG_CLICK_THRESHOLD_PX) {
@@ -289,21 +294,26 @@ function ServicePicker ({ meta, geo, logic, style }: IServicePickerProps) {
   }
 
   /**************************************
-   * Step 08 - رندر (دکمه‌های چپ/راست همیشه ثابت، فقط disabled)
+   * Step 08 - رندر (نمایش دکمه‌ها فقط در صورت سرریز)
    **************************************/
   return (
     <div className='relative flex flex-row items-center justify-center gap-2 w-full bg-neutral text-neutral-text rounded-lg'>
-      {/* دکمه چپ - همیشه mount شده */}
-      <Button
-        logic={{
-          onClick: () => scrollByOneItem('left'),
-          variant: 'default',
-          size: 'xs',
-          icon: <ArrowLeft2 size={18} className='stroke-neutral-text' />,
-          badge: canScrollLeft && hiddenLeftCount > 0 ? +hiddenLeftCount : null,
-          badgePosition: 'top-left'
-        }}
-      />
+      {/* دکمه چپ - فقط در صورت سرریز */}
+      {hasOverflow && (
+        <Button
+          logic={{
+            onClick: () => scrollByOneItem('left'),
+            variant: 'default',
+            state: hiddenLeftCount > 0 ? 'active' : 'disabled',
+            size: 'xs',
+            icon: <ArrowLeft2 size={18} />,
+            badge:
+              canScrollLeft && hiddenLeftCount > 0 ? +hiddenLeftCount : null,
+            badgePosition: 'top-left',
+            badgeColor: 'primary'
+          }}
+        />
+      )}
 
       {/* ناحیه اسکرول دکمه‌ها */}
       <div
@@ -344,54 +354,63 @@ function ServicePicker ({ meta, geo, logic, style }: IServicePickerProps) {
         })}
       </div>
 
-      {/* دکمه سه‌نقطه = نمایش کل لیست */}
-      <div className='relative flex-shrink-0' ref={menuRef}>
+      {/* دکمه سه‌نقطه = نمایش کل لیست - فقط در صورت سرریز */}
+      {hasOverflow && (
+        <div className='relative flex-shrink-0' ref={menuRef}>
+          <Button
+            logic={{
+              icon: (
+                <More size={21} className='stroke-neutral-text rotate-90' />
+              ),
+              variant: 'default',
+              size: 'sm',
+              onClick: () => setMenuOpen(o => !o)
+            }}
+          />
+          {menuOpen && (
+            <div
+              role='menu'
+              aria-label=''
+              className='custom-scrollbar absolute z-50 mt-2 end-0 min-w-[200px] max-h-[300px] overflow-y-auto bg-neutral text-neutral-text border border-neutral-border rounded-lg shadow-lg py-1'
+            >
+              {sortedItems?.map((item, idx) => {
+                const isActive = item.serviceName === logic.service?.serviceName
+                return (
+                  <button
+                    key={item.slug ?? idx}
+                    type='button'
+                    role='menuitem'
+                    onClick={() => goTo(item)}
+                    className={`w-full text-start px-3 py-2 text-sm flex items-center gap-2 text-neutral-text hover:bg-neutral-hover-bg hover:text-neutral-text ${
+                      isActive
+                        ? 'text-sky-600 font-medium'
+                        : 'text-gray-700 dark:text-gray-200'
+                    }`}
+                  >
+                    {item?.serviceName}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* دکمه راست - فقط در صورت سرریز */}
+      {hasOverflow && (
         <Button
           logic={{
-            icon: <More size={21} className='stroke-neutral-text rotate-90' />,
+            onClick: () => scrollByOneItem('right'),
             variant: 'default',
-            size: 'sm',
-            onClick: () => setMenuOpen(o => !o)
+            state: hiddenRightCount > 0 ? 'active' : 'disabled',
+            size: 'xs',
+            icon: <ArrowRight2 size={18} />,
+            badge:
+              canScrollRight && hiddenRightCount > 0 ? +hiddenRightCount : null,
+              badgePosition:"top-right"
           }}
         />
-        {menuOpen && (
-          <div
-            role='menu'
-            aria-label=''
-            className='custom-scrollbar absolute z-50 mt-2 end-0 min-w-[200px] max-h-[300px] overflow-y-auto bg-neutral text-neutral-text border border-neutral-border rounded-lg shadow-lg py-1'
-          >
-            {sortedItems?.map((item, idx) => {
-              const isActive = item.serviceName === logic.service?.serviceName
-              return (
-                <button
-                  key={item.slug ?? idx}
-                  type='button'
-                  role='menuitem'
-                  onClick={() => goTo(item)}
-                  className={`w-full text-start px-3 py-2 text-sm flex items-center gap-2 text-neutral-text hover:bg-neutral-hover-bg hover:text-neutral-text ${
-                    isActive
-                      ? 'text-sky-600 font-medium'
-                      : 'text-gray-700 dark:text-gray-200'
-                  }`}
-                >
-                  {item?.serviceName}
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      <Button
-        logic={{
-          onClick: () => scrollByOneItem('right'),
-          variant: 'default',
-          size: 'xs',
-          icon: <ArrowRight2 size={18} className='stroke-neutral-text' />,
-          badge:
-            canScrollRight && hiddenRightCount > 0 ? +hiddenRightCount : null
-        }}
-      />
+      )}
     </div>
   )
 }

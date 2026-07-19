@@ -3,26 +3,13 @@ Meta Data
 
 ID:             RCOM_dropdownLarge
 Title:          Large Dropdown Component - Optimized v1.1
-Version:        01.01.00
+Version:        00.00.05
 VAR:            01
 
 last-update:    D2026.07.17
 owner:          apps68
 
-Description:    Highly featured dropdown/select with single & multi
-                select, search/filter, grouping, keyboard navigation,
-                type-ahead, chip display, virtualized option list,
-                portal-based floating menu, loading/empty states,
-                and dark/light mode. Follows the same meta/geo/logic/
-                style prop framework as RCOM_tableLinear.
-
-                v1.1 additions (all via `logic`):
-                - bordered:       trigger with/without border
-                - indicatorIcon:  right-side icon -> "arrow" | "dots" | "none"
-                - showCounter:    badge between option icon & label showing
-                                  "selected position / total options"
-                - hamburgerIcon:  always-on hamburger icon at trigger start
-                                  (still renders when the option has an icon)
+Description:  
 ------------------------------------------------------------*/
 
 /**************************************

@@ -192,7 +192,7 @@ function Main () {
           className={
             isFullScreen
               ? 'fixed inset-0 z-[1000] bg-white dark:bg-gray-900 p-10 flex flex-col'
-              : 'w-full h-auto relative min-h-screen'
+              : 'w-full h-auto relative'
           }
         >
           {isLoading && (
