@@ -189,7 +189,7 @@ const variantClasses: Record<InputVariant, string> = {
 
   // --- وریشن‌های جدید ---
   white: 'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-600',
-  gray: 'bg-[#E9E9E9] border-gray-200 dark:bg-gray-700 dark:border-gray-600',  
+  gray: '!bg-[#E9E9E9] !border-gray-200 !dark:bg-gray-700 !dark:border-gray-600',  
 };
 
 const sizeClasses: Record<InputSize, string> = {
