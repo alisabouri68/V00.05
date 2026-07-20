@@ -1,9 +1,10 @@
 import Dash from "./BNDL_dashboard/config";
-import Medical from "./BNDL_medical/config";
-import Med_x from "./BNDL_Med_x/config";
+import Table from "./BNDL_Table/config";
+import Menu from "./BNDL_Menu/config";
+import InterPanelCalls from "./BNDL_InterPanelCalls/config";
 
 
-export default [Dash, Medical,Med_x];
+export default [Dash, Table,Menu,InterPanelCalls];
 
 
 

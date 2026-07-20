@@ -106,6 +106,7 @@ function Header({ user }: HeaderProps) {
           logic={{
             options: THEME_OPTIONS,
             value: theme,
+            variant: 'default',
             onChange: (value) => setTheme(value as ThemeValue),
             bordered: false,
             searchable: false,

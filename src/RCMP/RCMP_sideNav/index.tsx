@@ -1,4 +1,4 @@
-import { Element3, Flash} from "iconsax-react";
+import { Element3, Grid1,HambergerMenu,Call} from "iconsax-react";
 import { useParams } from "react-router-dom";
 import logoDash from "Asset/images/Asset 3.svg";
 
@@ -14,18 +14,25 @@ function SideNav() {
       link: `/dashboard/default/history`,
     },
     {
-      id: "smart-lab",
-      label: "smart-lab",
-      icon: Flash,
-      active: bundleName === "medical",
-      link: `/medical/spk_1/sheet_1`,
+      id: "table",
+      label: "Table",
+      icon: Grid1,
+      active: bundleName === "table",
+      link: `/table/linear-arrangement/normal`,
     },
     {
-      id: "med-x",
-      label: "Med",
-      icon: Flash,
-      active: bundleName === "med-x",
-      link: `/med-x/spk_1/sheet_1`,
+      id: "menu",
+      label: "Menu",
+      icon: HambergerMenu,
+      active: bundleName === "menu",
+      link: `/menu/service-picker/mono-flat`,
+    },
+    {
+      id: "inter panel calls",
+      label: "Inter Panel Calls",
+      icon: Call,
+      active: bundleName === "inter-panel-calls",
+      link: `/inter-panel-calls/environment-checker/environment-checker`,
     },
   ];
 

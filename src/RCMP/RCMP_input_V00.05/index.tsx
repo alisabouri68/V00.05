@@ -14,7 +14,13 @@ import React, {
 
 // ====================== Types ======================
 
-export type InputVariant = 'fill' | 'outline' | 'underline' | 'ghost'
+export type InputVariant =
+  | 'fill'
+  | 'outline'
+  | 'underline'
+  | 'ghost'
+  | 'white'  
+  | 'gray'   
 export type InputSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 export type InputState =
   | 'normal'
@@ -173,21 +179,22 @@ export interface IInputRef {
 // ====================== کلاس‌های ثابت ======================
 
 const baseInputClasses =
-  'w-full rounded-md border bg-transparent text-neutral-text placeholder-neutral-text/50 outline-none transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 read-only:opacity-80'
+  'w-full rounded-md border bg-transparent text-gray-900 placeholder-gray-400 !outline-none transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 read-only:opacity-80 dark:text-gray-100 dark:placeholder-gray-500'
 
 const variantClasses: Record<InputVariant, string> = {
-  fill: 'bg-neutral-bg border-neutral-border focus:border-primary focus:ring-2 focus:ring-primary/30',
-  outline:
-    'bg-transparent border-neutral-border focus:border-primary focus:ring-2 focus:ring-primary/30',
-  underline:
-    'border-b rounded-none border-neutral-border focus:border-primary focus:ring-0',
-  ghost:
-    'border-transparent bg-transparent focus:border-transparent focus:ring-0'
-}
+  fill: 'bg-[#e9e9e9] border-gray-100 dark:bg-gray-800 dark:border-gray-800',
+  outline: 'bg-transparent border-gray-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 dark:border-gray-600 dark:focus:border-orange-400 dark:focus:ring-orange-400/30',
+  underline: 'border-b rounded-none border-gray-300 focus:border-cyan-500 focus:ring-0 dark:border-gray-600 dark:focus:border-orange-400',
+  ghost: 'border-transparent bg-transparent focus:border-transparent focus:ring-0 hover:bg-gray-50 dark:hover:bg-gray-800/50',
+
+  // --- وریشن‌های جدید ---
+  white: 'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-600',
+  gray: 'bg-[#E9E9E9] border-gray-200 dark:bg-gray-700 dark:border-gray-600',  
+};
 
 const sizeClasses: Record<InputSize, string> = {
   xs: 'text-xs px-2 py-1 h-7',
-  sm: 'text-sm px-3 py-1.5 h-9',
+  sm: 'text-sm px-3 py-1.5 h-8',
   md: 'text-base px-4 py-2 h-11',
   lg: 'text-lg px-5 py-2.5 h-13',
   xl: 'text-xl px-6 py-3 h-15'
@@ -212,11 +219,11 @@ const endPaddingBySize: Record<InputSize, string> = {
 
 const stateClasses: Record<InputState, string> = {
   normal: '',
-  hover: 'hover:border-neutral-hover',
-  focus: 'focus:border-primary focus:ring-2 focus:ring-primary/30',
-  disabled: 'disabled:cursor-not-allowed disabled:opacity-60',
-  error: 'border-error focus:border-error focus:ring-error/30',
-  success: 'border-success focus:border-success focus:ring-success/30'
+  hover: '',
+  focus: '',
+  disabled: '',
+  error: 'border-red-500 focus:border-red-500 focus:ring-red-500/30 dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/30',
+  success: 'border-green-500 focus:border-green-500 focus:ring-green-500/30 dark:border-green-400 dark:focus:border-green-400 dark:focus:ring-green-400/30'
 }
 
 // چک‌باکس/رادیو: خودِ input واقعی به‌صورت نامرئی روی یک باکس بصری قرار می‌گیرد.
@@ -266,10 +273,10 @@ function getCheckableVisualClasses ({
 }): string {
   const colorClasses =
     state === 'error'
-      ? 'border-error text-error peer-focus-visible:ring-error/30'
+      ? 'border-red-500 text-red-500 peer-focus-visible:ring-red-500/30 dark:border-red-400 dark:text-red-400 dark:peer-focus-visible:ring-red-400/30'
       : state === 'success'
-      ? 'border-success text-success peer-focus-visible:ring-success/30'
-      : 'border-neutral-border text-primary peer-focus-visible:ring-primary/30'
+      ? 'border-green-500 text-green-500 peer-focus-visible:ring-green-500/30 dark:border-green-400 dark:text-green-400 dark:peer-focus-visible:ring-green-400/30'
+      : 'border-gray-300 text-cyan-500 peer-focus-visible:ring-cyan-500/30 dark:border-gray-500 dark:text-orange-400 dark:peer-focus-visible:ring-orange-400/30'
 
   return cx(
     'flex shrink-0 items-center justify-center rounded border bg-transparent transition-colors duration-150',
@@ -277,18 +284,18 @@ function getCheckableVisualClasses ({
     type === 'radio' && 'rounded-full',
     colorClasses,
     'peer-checked:bg-current peer-checked:border-current',
-    'hover:border-neutral-hover peer-focus-visible:ring-2',
+    'hover:border-gray-400 dark:hover:border-gray-400 peer-focus-visible:ring-2',
     disabledOrLoading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
     className
   )
 }
 
-const labelClasses = 'block text-sm font-medium text-neutral-text mb-1.5'
+const labelClasses = 'block text-sm font-medium text-gray-700 mb-1.5 dark:text-gray-200'
 const helperTextClasses =
   'mt-1.5 text-sm flex items-center justify-between gap-2'
-const errorTextClasses = 'text-error'
-const successTextClasses = 'text-success'
-const hintTextClasses = 'text-neutral-text/70'
+const errorTextClasses = 'text-red-500 dark:text-red-400'
+const successTextClasses = 'text-green-500 dark:text-green-400'
+const hintTextClasses = 'text-gray-500/70 dark:text-gray-400/70'
 
 // ====================== توابع کمکی ======================
 
@@ -342,7 +349,7 @@ const FieldLabel: React.FC<{
   <label htmlFor={htmlFor} className={cx(labelClasses, className)}>
     {children}
     {required && (
-      <span className='text-error ms-1' aria-hidden='true'>
+      <span className='text-red-500 ms-1 dark:text-red-400' aria-hidden='true'>
         *
       </span>
     )}
@@ -374,7 +381,7 @@ const HelperText: React.FC<{
     >
       <span>{text}</span>
       {charCount && (
-        <span className='shrink-0 tabular-nums text-neutral-text/50'>
+        <span className='shrink-0 tabular-nums text-gray-400 dark:text-gray-500'>
           {charCount.current}/{charCount.max}
         </span>
       )}
@@ -746,7 +753,7 @@ const Input = forwardRef<IInputRef, IInputProps>(
                 <label
                   htmlFor={fieldId}
                   className={cx(
-                    'text-sm text-neutral-text cursor-pointer select-none',
+                    'text-sm text-gray-700 cursor-pointer select-none dark:text-gray-200',
                     labelClassName
                   )}
                 >
@@ -804,23 +811,23 @@ const Input = forwardRef<IInputRef, IInputProps>(
         {hasStartAdornment || hasEndAdornment ? (
           <div className='relative'>
             {icon && (
-              <div className='absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none text-neutral-text/60'>
+              <div className='absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none text-gray-400 dark:text-gray-500'>
                 {icon}
               </div>
             )}
             {!icon && prefix && (
-              <div className='absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none text-neutral-text/70'>
+              <div className='absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none text-gray-500 dark:text-gray-400'>
                 {prefix}
               </div>
             )}
             {renderInput()}
             {loading ? (
-              <div className='absolute inset-y-0 end-0 flex items-center pe-3 text-neutral-text/60'>
+              <div className='absolute inset-y-0 end-0 flex items-center pe-3 text-gray-400 dark:text-gray-500'>
                 <Spinner className='h-4 w-4' />
               </div>
             ) : (
               suffix && (
-                <div className='absolute inset-y-0 end-0 flex items-center pe-3 text-neutral-text/70'>
+                <div className='absolute inset-y-0 end-0 flex items-center pe-3 text-gray-500 dark:text-gray-400'>
                   {suffix}
                 </div>
               )

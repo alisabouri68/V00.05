@@ -39,7 +39,6 @@ body {
 
   /* اسکرول نرم برای لینک‌های داخلی (اگر از anchor link استفاده شود) */
   scroll-behavior: smooth;
-
   /* حذف حاشیه‌های پیش‌فرض و تنظیم padding */
   margin: 0;
   padding: 0;

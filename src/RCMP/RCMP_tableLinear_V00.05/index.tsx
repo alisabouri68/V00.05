@@ -38,7 +38,9 @@ import {
   HambergerMenu,
   ArrowDown3,
   ArrowUp3,
-  Login
+  Login,
+  Minus,
+  Add
 } from 'iconsax-react'
 import React, {
   useState,
@@ -55,7 +57,7 @@ import { createPortal } from 'react-dom'
  **************************************/
 import Button from 'RCMP/RCMP_button_V00.05'
 import ModalBase from '../RCMP_modal_V00.05'
-import DropdownLarge from 'RCMP/RCMP_dropdown_V00.05'
+import DropdownLarge, { IOption } from 'RCMP/RCMP_dropdown_V00.05'
 import Tooltip from 'RCMP/RCMP_tooltip_V00.05'
 import Input, { IInputRef } from 'RCMP/RCMP_input_V00.05'
 
@@ -499,7 +501,13 @@ const TableLinear = memo(function TableLinear ({
   } | null>(null)
   const [reorderableData, setReorderableData] = useState<any[]>(data)
   const [dragSourceIndex, setDragSourceIndex] = useState<number | null>(null)
-
+  // در بخش stateهای کامپوننت
+  const [filterColumn, setFilterColumn] = useState<string | null>(null)
+  const [filterValue, setFilterValue] = useState<string>('')
+  const [sortColumn, setSortColumn] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(
+    null
+  )
   // Keep visible-columns state in sync when the `columns` prop changes
   // (e.g. columns added/removed dynamically) instead of only at mount,
   // where the initial useState(new Set(...)) would otherwise never see
@@ -530,12 +538,7 @@ const TableLinear = memo(function TableLinear ({
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns.map(c => c.key).join(',')])
-  const toggleTooltip = (rowKey: string | number) => {
-    setTooltipOpen(prev => ({
-      ...prev,
-      [rowKey]: !prev[rowKey]
-    }))
-  }
+
   const handleDragStart = useCallback(
     (e: React.DragEvent, paginatedRowIndex: number) => {
       // Resolve the index within the *full* reorderable dataset, since
@@ -1325,12 +1328,46 @@ const TableLinear = memo(function TableLinear ({
     )
   }
 
+  // گزینه‌های مرتب‌سازی
+  const sortOptions = useMemo(() => {
+    const options: IOption[] = [{ key: 'none', label: 'None', value: 'none' }]
+    columns
+      .filter(c => c.sortable && !c.hidden)
+      .forEach(col => {
+        options.push({
+          key: `${col.key}-asc`,
+          label: `${col.title} (A-Z)`,
+          value: `${col.key}-asc`
+        })
+        options.push({
+          key: `${col.key}-desc`,
+          label: `${col.title} (Z-A)`,
+          value: `${col.key}-desc`
+        })
+      })
+    return options
+  }, [columns])
+
+  // گزینه‌های فیلتر
+  const filterOptions = useMemo(() => {
+    const options: IOption[] = [{ key: 'all', label: 'All', value: 'all' }]
+    columns
+      .filter(c => c.filterable && !c.hidden)
+      .forEach(col => {
+        options.push({
+          key: col.key,
+          label: col.title,
+          value: col.key
+        })
+      })
+    return options
+  }, [columns])
   // --- MAIN RENDER ---
 
   return (
     <>
       <section
-        className={`overflow-hidden rounded-xl border border-neutral-border bg-[#f4f7fc] tablebg shadow-sm shadow-neutral-ring`}
+        className={`overflow-hidden rounded-xl border border-neutral-border min-h-[550px] bg-[#f4f7fc] tablebg shadow-sm`}
         style={{
           width: geo?.width,
           height: geo?.height,
@@ -1373,8 +1410,8 @@ const TableLinear = memo(function TableLinear ({
             </div>
           </div>
 
-          <div className='flex items-center gap-2'>
-            {/* Add Button - Opens Add Modal */}
+          <div className='flex items-center gap-2 flex-wrap'>
+            {/* دکمه افزودن (موجود)
             {enableAddModal && (
               <Button
                 logic={{
@@ -1385,72 +1422,95 @@ const TableLinear = memo(function TableLinear ({
                   size: 'sm'
                 }}
               />
-            )}
+            )} */}
 
-            {/* Column Visibility Toggle */}
-            <div className='relative'>
-              <button
-                ref={settingButtonRef}
-                onClick={() => {
-                  if (showColumnMenu) {
-                    setShowColumnMenu(false)
-                    setMenuPosition(null)
+            {/* دراپ‌داون مرتب‌سازی */}
+            <DropdownLarge
+              logic={{
+                size: 'sm',
+                indicatorIcon:"none",
+                options: sortOptions,
+                value: sortColumn ? `${sortColumn}-${sortDirection}` : 'none',
+                onChange: (val: string) => {
+                  if (val === 'none') {
+                    setSortColumn(null)
+                    setSortDirection(null)
+                    setSortConfig([])
                   } else {
-                    const rect =
-                      settingButtonRef.current?.getBoundingClientRect()
-                    if (rect) {
-                      setMenuPosition({
-                        top: rect.bottom + window.scrollY + 4,
-                        left: rect.left + window.scrollX
+                    const [col, dir] = val.split('-')
+                    setSortColumn(col)
+                    setSortDirection(dir as 'asc' | 'desc')
+                    setSortConfig([
+                      { key: col, direction: dir as 'asc' | 'desc' }
+                    ])
+                  }
+                },
+                placeholder: 'Sort',
+                searchable: false,
+                clearable: false,
+                bordered: true,
+                variant: 'gray'
+              }}
+              style={{ className: 'w-32' }}
+            />
+
+            {/* دراپ‌داون فیلتر */}
+            <DropdownLarge
+              logic={{
+                size: 'sm',
+                options: filterOptions,
+                value: filterColumn || 'all',
+                onChange: (val: string) => {
+                  if (val === 'all') {
+                    setFilterColumn(null)
+                    setFilterValue('')
+                    setFilters({})
+                  } else {
+                    setFilterColumn(val)
+                    // اگر قبلاً فیلتری برای این ستون وجود داشت، مقدار آن را نگه دار
+                    setFilters(prev => ({
+                      ...prev,
+                      [val]: filterValue || prev[val] || ''
+                    }))
+                  }
+                },
+                placeholder: 'Filter',
+                searchable: false,
+                clearable: false,
+                indicatorIcon: 'none',
+                bordered: true,
+                variant: 'gray'
+              }}
+            />
+
+            {/* اگر ستون فیلتر انتخاب شده، فیلد ورودی مقدار فیلتر را نمایش دهیم */}
+            {filterColumn && (
+              <Input
+                logic={{
+                  size: 'sm',
+                  variant: 'gray',
+                  placeholder: `Filter ${filterColumn}...`,
+                  value: filterValue,
+                  onChange: (val: string) => {
+                    setFilterValue(val)
+                    if (val === '') {
+                      // اگر مقدار خالی شد، فیلتر را حذف کن
+                      setFilters(prev => {
+                        const newFilters = { ...prev }
+                        delete newFilters[filterColumn]
+                        return newFilters
                       })
+                      setFilterColumn(null)
+                    } else {
+                      setFilters(prev => ({
+                        ...prev,
+                        [filterColumn]: val
+                      }))
                     }
-                    setShowColumnMenu(true)
                   }
                 }}
-                className='h-8 w-8 flex items-center justify-center rounded-lg border border-neutral-border hover:border-neutral-hover-border'
-                title='Column Management'
-              >
-                <Setting2 size={16} className='stroke-neutral-text' />
-              </button>
-              {showColumnMenu &&
-                menuPosition &&
-                createPortal(
-                  <div
-                    ref={menuRef}
-                    className='fixed bg-neutral text-neutral-text rounded-lg shadow-lg border border-neutral-border py-2'
-                    style={{
-                      top: menuPosition.top,
-                      left: menuPosition.left,
-                      minWidth: 80,
-                      zIndex: 9999
-                    }}
-                  >
-                    <div className='px-3 py-1.5 text-sm font-bold text-neutral-text border-b border-neutral-border mb-1'>
-                      Show columns
-                    </div>
-                    {columns.map(col => (
-                      <label
-                        key={col.key}
-                        className='flex items-center gap-2 px-3 py-1.5 cursor-pointer '
-                      >
-                        <Input
-                          logic={{
-                            type: 'checkbox',
-                            size: 'sm',
-                            state: 'normal',
-                            value: visibleColumns.has(col.key),
-                            onChange: () => toggleColumnVisibility(col.key)
-                          }}
-                        />
-                        <span className='text-sm text-neutral-text '>
-                          {col.title}
-                        </span>
-                      </label>
-                    ))}
-                  </div>,
-                  document.body
-                )}
-            </div>
+              />
+            )}
 
             {/* Search */}
 
@@ -1458,7 +1518,7 @@ const TableLinear = memo(function TableLinear ({
               logic={{
                 size: 'sm',
                 type: 'search',
-                variant: 'fill',
+                variant: 'gray',
                 placeholder: 'search . . . ',
                 onChange: value => handleSearch(value),
                 value: search
@@ -1573,6 +1633,14 @@ const TableLinear = memo(function TableLinear ({
                     }}
                   >
                     <div className='flex items-center gap-1'>
+                           {/* Column Filter */}
+                    {column.filterable && (
+                      <ColumnFilter
+                        column={column}
+                        value={filters[column.key] || ''}
+                        onChange={val => handleFilterChange(column.key, val)}
+                      />
+                    )}
                       <span className='font-semibold text-neutral-text'>
                         {column.title}
                       </span>
@@ -1585,16 +1653,9 @@ const TableLinear = memo(function TableLinear ({
                           {renderSortIcon(column.key)}
                         </button>
                       )}
+               
                     </div>
 
-                    {/* Column Filter */}
-                    {column.filterable && (
-                      <ColumnFilter
-                        column={column}
-                        value={filters[column.key] || ''}
-                        onChange={val => handleFilterChange(column.key, val)}
-                      />
-                    )}
 
                     {/* Resize Handle */}
                     {enableColumnResize && (
@@ -1704,23 +1765,53 @@ const TableLinear = memo(function TableLinear ({
                             left: selection ? '0' : '0'
                           }}
                         >
-                          {isEditMode === 'edit' ? (
-                            <div
-                              draggable
-                              onDragStart={e => handleDragStart(e, rowIndex)}
-                              onDragOver={e => e.preventDefault()}
-                              onDrop={e => handleDrop(e, rowIndex)}
-                              className='cursor-grab flex justify-center items-center py-1 active:cursor-grabbing text-neutral-text'
-                            >
-                              <HambergerMenu
-                                size={14}
-                                className='stroke-gray-400 dark:stroke-gray-500'
-                              />
-                            </div>
-                          ) : (
-                            // در حالت نمایش: شماره ردیف (بر اساس اندازه صفحه‌ی فعلی)
-                            (currentPage - 1) * internalPageSize + rowIndex + 1
-                          )}
+                          <div className='flex items-center gap-4'>
+                            {/* دکمه‌ی Expand در سمت چپ */}
+                            {logic?.actions?.expand && (
+                              <button
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  toggleExpand(key)
+                                }}
+                                className='flex size-6 items-center justify-center rounded-md 
+                   hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors'
+                                aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                              >
+                                {isExpanded ? (
+                                  <Minus
+                                    size={16}
+                                    className='stroke-neutral-text'
+                                  />
+                                ) : (
+                                  <Add
+                                    size={16}
+                                    className='stroke-neutral-text'
+                                  />
+                                )}
+                              </button>
+                            )}
+
+                            {isEditMode === 'edit' ? (
+                              <div
+                                draggable
+                                onDragStart={e => handleDragStart(e, rowIndex)}
+                                onDragOver={e => e.preventDefault()}
+                                onDrop={e => handleDrop(e, rowIndex)}
+                                className='cursor-grab flex justify-center items-center py-1 active:cursor-grabbing text-neutral-text'
+                              >
+                                <HambergerMenu
+                                  size={14}
+                                  className='stroke-gray-400 dark:stroke-gray-500'
+                                />
+                              </div>
+                            ) : (
+                              <span className='text-sm text-neutral-text'>
+                                {(currentPage - 1) * internalPageSize +
+                                  rowIndex +
+                                  1}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         {selection && (
                           <td
@@ -1795,26 +1886,7 @@ const TableLinear = memo(function TableLinear ({
                           onClick={e => e.stopPropagation()}
                         >
                           <div className='flex items-center justify-between gap-4'>
-                            {logic?.actions?.expand && (
-                              <button
-                                onClick={() => toggleExpand(key)}
-                                className='flex size-7 items-center justify-center rounded-md 
-                                           hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors'
-                                aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                              >
-                                {isExpanded ? (
-                                  <ArrowUp2
-                                    size={16}
-                                    className='stroke-neutral-text'
-                                  />
-                                ) : (
-                                  <ArrowDown2
-                                    size={16}
-                                    className='stroke-neutral-text'
-                                  />
-                                )}
-                              </button>
-                            )}
+                        
 
                             {isEditMode === 'edit' ? (
                               <>

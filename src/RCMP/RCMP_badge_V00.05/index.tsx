@@ -133,89 +133,85 @@ const Badge = memo(function Badge ({ meta, geo, logic, style }: IBadgeProps) {
   const { className: customClassName } = style || {}
   const { width, height, maxWidth, maxHeight } = geo || {}
 
-  // --- Color mapping (Tailwind classes) ---
+  // --- Color mapping (Tailwind default classes) ---
   const colorMap = useMemo(() => {
     const base = {
       primary: {
-        bg: 'bg-primary',
-        text: 'text-white stroke-white',
-        border: 'border-pri-500',
-        hover: 'hover:bg-primary-hover',
-        ghostText: 'text-primrary-text stroke-primary-text',
-        outlineText: 'text-primrary-text stroke-primary-text',
-        outlineBorder: 'border-primary-border',
-        ghostHover: 'hover:bg-primary-hover',
-        dot: 'bg-primary'
+        bg: 'bg-cyan-600 dark:bg-orange-600',
+        text: 'text-white dark:text-white',
+        border: 'border-cyan-600 dark:border-orange-600',
+        hover: 'hover:bg-cyan-700 dark:hover:bg-orange-700',
+        ghostText: 'text-cyan-600 dark:text-orange-600',
+        outlineText: 'text-cyan-600 dark:text-orange-600',
+        outlineBorder: 'border-cyan-600 dark:border-orange-600',
+        ghostHover: 'hover:bg-cyan-50 dark:hover:bg-cyan-950',
+        dot: 'bg-cyan-600'
       },
       secondary: {
-        bg: 'bg-secondary',
-        text: 'text-secondary-text stroke-secondary-text',
-        border: 'border-secondary-border',
-        hover: 'hover:bg-secondary-hover',
-        ghostText: 'text-secondary-text stroke-secondary-text',
-        outlineText: 'text-secondary-bg stroke-secondary-bg',
-        outlineBorder: 'border-secondary-border',
-        ghostHover: 'hover:bg-secondary-hover',
-        dot: 'bg-purple-500'
+        bg: 'bg-purple-600',
+        text: 'text-white',
+        border: 'border-purple-600',
+        hover: 'hover:bg-purple-700',
+        ghostText: 'text-purple-600',
+        outlineText: 'text-purple-600',
+        outlineBorder: 'border-purple-600',
+        ghostHover: 'hover:bg-purple-50 dark:hover:bg-purple-950',
+        dot: 'bg-purple-600'
       },
       success: {
-        bg: 'bg-success',
-        text: 'text-success-text stroke-success-text',
-        border: 'border-success-border',
-
-        hover: 'hover:bg-success-hover',
-
-        ghostText: 'text-success-text stroke-success-text',
-        ghostHover: 'hover:bg-success-selected',
-
-        outlineText: 'text-success-bg stroke-success-bg',
-        outlineBorder: 'border-success-border',
-
-        dot: 'bg-success'
+        bg: 'bg-green-600',
+        text: 'text-white',
+        border: 'border-green-600',
+        hover: 'hover:bg-green-700',
+        ghostText: 'text-green-600',
+        ghostHover: 'hover:bg-green-50 dark:hover:bg-green-950',
+        outlineText: 'text-green-600',
+        outlineBorder: 'border-green-600',
+        dot: 'bg-green-600'
       },
       warning: {
-        bg: 'bg-warning',
-        text: 'text-warning-text stroke-warning-text',
-        border: 'border-warning-border',
-        hover: 'hover:bg-warning-hover',
-        ghostText: 'text-warning-text stroke-warning-text',
-        outlineText: 'text-warning-text stroke-warning-text',
-        outlineBorder: 'border-warning-border',
-        ghostHover: 'hover:bg-warning-hover',
-        dot: 'bg-warning'
+        bg: 'bg-yellow-500',
+        text: 'text-yellow-950',
+        border: 'border-yellow-500',
+        hover: 'hover:bg-yellow-600',
+        ghostText: 'text-yellow-600',
+        outlineText: 'text-yellow-600',
+        outlineBorder: 'border-yellow-500',
+        ghostHover: 'hover:bg-yellow-50 dark:hover:bg-yellow-950',
+        dot: 'bg-yellow-500'
       },
       danger: {
-        bg: 'bg-danger',
-        text: 'text-danger-text stroke-danger-text',
-        border: 'border-danger-border',
-        hover: 'hover:bg-danger-600',
-        ghostText: 'text-danger/80',
-        outlineText: 'text-danger',
-        outlineBorder: 'border-danger-border',
-        ghostHover: 'hover:bg-danger-hover',
-        dot: 'bg-danger'
+        bg: 'bg-red-600',
+        text: 'text-white',
+        border: 'border-red-600',
+        hover: 'hover:bg-red-700',
+        ghostText: 'text-red-600',
+        outlineText: 'text-red-600',
+        outlineBorder: 'border-red-600',
+        ghostHover: 'hover:bg-red-50 dark:hover:bg-red-950',
+        dot: 'bg-red-600'
       },
       info: {
-        bg: 'bg-info',
-        text: 'text-info-text stroke-info-text',
-        border: 'border-info-border',
-        hover: 'hover:bg-info-hover',
-        ghostText: 'text-info-text stroke-info-text',
-        outlineText: 'text-info-text stroke-info-text',
-        outlineBorder: 'border-info-border',
-        ghostHover: 'hover:bg-info-hover',
-        dot: 'bg-info'
+        bg: 'bg-light_blue-600',
+        text: 'text-white',
+        border: 'border-light_blue-600',
+        hover: 'hover:bg-light_blue-700',
+        ghostText: 'text-light_blue-600',
+        outlineText: 'text-light_blue-600',
+        outlineBorder: 'border-light_blue-600',
+        ghostHover: 'hover:bg-light_blue-50 dark:hover:bg-light_blue-950',
+        dot: 'bg-light_blue-600'
       },
       neutral: {
-        bg: 'bg-neutral',
-        text: 'text-neutral-text stroke-neutral-text',
-        border: 'border-neutral-border',
-        hover: 'hover:bg-neutral-hover',
-        ghostText: 'text-neutral-text stroke-neutral-text',
-        outlineText: 'text-neutral-text stroke-neutral-text',
-        outlineBorder: 'border-neutral-border',
-        ghostHover: 'hover:bg-neutral-hover',
-        dot: 'bg-neutral'
+        bg: 'bg-gray-500',
+        text: 'text-white',
+        border: 'border-gray-500',
+        hover: 'hover:bg-gray-600',
+        ghostText: 'text-gray-600',
+        outlineText: 'text-gray-600',
+        outlineBorder: 'border-gray-500',
+        ghostHover: 'hover:bg-gray-100 dark:hover:bg-gray-800',
+        dot: 'bg-gray-500'
       }
     }
     return base

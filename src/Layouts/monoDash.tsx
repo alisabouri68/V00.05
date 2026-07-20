@@ -9,8 +9,6 @@ import { Spinner } from 'flowbite-react'
 import StickyBox from 'react-sticky-box'
 import ActionBox from 'BOX/BOX_action'
 import Auxiliary from 'BOX/BOX_auxiliary'
-import IconText from 'RCMP/RCMP_iconText'
-import IconSwitcher from 'RCMP/RCMP_iconSwitcher'
 import ServicePicker from 'RCMP/RCMP_servicePicker'
 import JiniSlider from 'BOX/RBOX_jini_V00.05/index'
 import DropdownLarge, { IOption } from 'RCMP/RCMP_dropdown_V00.05'
@@ -126,15 +124,9 @@ function Main () {
 
           <div className='flex justify-between items-center px-3'>
             <div className='flex items-center'>
-              <Setting2
-                size={17}
-                color='currentColor'
-                className='stroke-neutral-text'
-              />
-
-              <div className='pl-3 mt-1'>
+              <div className=''>
                 <DropdownLarge
-                  geo={{ width: '160px' }}
+                  geo={{ width: 'fit-content' }}
                   logic={{
                     options: bundleOptions,
                     value: activeBundle.slug,
@@ -145,6 +137,7 @@ function Main () {
                     clearable: false,
                     indicatorIcon: 'dots',
                     placeholder: 'Select bundle'
+                  
                   }}
                 />
               </div>
@@ -163,9 +156,9 @@ function Main () {
           <div className='w-full h-px bg-gray-100 dark:bg-gray-800 mb-2 px-3' />
 
           {/* Sheet Selector */}
-          <div className='flex relative gap-2 mb-4 px-2 flex-col'>
+          
             <DropdownLarge
-              geo={{ width: '220px' }}
+              geo={{ width: "280px" }}
               logic={{
                 options: sheetOptions,
                 value: sheet?.slug,
@@ -179,12 +172,8 @@ function Main () {
                 placeholder: 'Select sheet'
               }}
             />
-            <p className='px-3'>
-              Lorem ipsum dolor sit amet consectetur, adipisicing elit.
-              Voluptatum quidem ea veniam temporibus
-            .
-            </p>
-          </div>
+            
+          
         </div>
 
         {/* Content Area with Loading Overlay */}

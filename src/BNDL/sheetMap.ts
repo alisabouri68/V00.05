@@ -18,23 +18,11 @@ const sheetComponentMap = {
     priority: {
         component: lazy(() => import("./BNDL_dashboard/CANV_dashboard/WRPR_desk/sheets/priority")),
     },
+    normal: {
+        component: lazy(() => import("./BNDL_Table/CANV_table/WRPR_desk/sheets/table_Linear_normal")),
+        auxiliary: lazy(() => import("./BNDL_Table/CANV_table/WRPR_desk/sheets/table_Linear_normal/assistance")),
+    },
 
-    sheet_1: {
-        component: lazy(() => import("./BNDL_medical/CANV_medical/WRPR_desk/sheets/sheet1")),
-        auxiliary: lazy(() => import("./BNDL_medical/CANV_medical/WRPR_desk/sheets/sheet1/assistance")),
-    },
-    sheet_2: {
-        component: lazy(() => import("./BNDL_medical/CANV_medical/WRPR_desk/sheets/sheet2")),
-    },
-    sheet_3: {
-        component: lazy(() => import("./BNDL_medical/CANV_medical/WRPR_desk/sheets/sheet3")),
-    },
-    sheet_4: {
-        component: lazy(() => import("./BNDL_medical/CANV_medical/WRPR_desk/sheets/sheet4")),
-    },
-    button: {
-        component: lazy(() => import("./BNDL_medical/CANV_medical/WRPR_desk/sheets/button")),
-    },
 };
 
 
